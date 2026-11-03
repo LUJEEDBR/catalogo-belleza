@@ -219,7 +219,48 @@ $('#input-foto').addEventListener('change', async e => {
   const file = e.target.files[0]; if (!file) return;
   fotoBlob = await comprimirFoto(file);
   $('#foto-preview').src = URL.createObjectURL(fotoBlob);
+  leerEtiqueta(file);
 });
+
+// Imagen completa (sin recorte) a 1280px para que la IA lea bien la etiqueta
+async function imagenParaIA(file) {
+  const img = await createImageBitmap(file);
+  const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+  const buf = new Uint8Array(await b.arrayBuffer());
+  let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+// Al tomar foto: la IA lee la etiqueta y llena los campos vacíos (nunca pisa lo ya capturado)
+async function leerEtiqueta(file) {
+  if (!navigator.onLine) return;
+  const f = $('#form-producto'), origen = $('#ficha-origen'), antes = origen.textContent;
+  origen.textContent = '✨ Leyendo la etiqueta…';
+  try {
+    const { data, error } = await sb.functions.invoke('leer-etiqueta', {
+      body: { imagen: await imagenParaIA(file), mime: 'image/jpeg' } });
+    if (error || !data || data.error) throw error || new Error(data?.error || 'sin datos');
+    let n = 0;
+    const poner = (campo, valor) => {
+      if (valor == null || valor === '' || !f[campo] || f[campo].value) return;
+      f[campo].value = valor; n++;
+    };
+    poner('nombre', data.nombre); poner('marca', data.marca);
+    poner('presentacion_cantidad', data.presentacion_cantidad);
+    poner('presentacion_unidad', data.presentacion_unidad); poner('genero', data.genero);
+    if (f.descripcion) poner('descripcion', data.descripcion);
+    origen.textContent = n ? `✨ Llené ${n} campo${n > 1 ? 's' : ''} con la foto · revísalos y pon el precio` : antes;
+    if (n) { bip(true); navigator.vibrate?.(30); f.precio_publico.focus(); }
+  } catch (err) {
+    console.warn('leer-etiqueta', err);
+    origen.textContent = antes;
+    toast('No pude leer la etiqueta, captúrala a mano.');
+  }
+}
 
 async function cargarMarcas() {
   if (!navigator.onLine) return;
