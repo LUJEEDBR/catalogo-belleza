@@ -94,9 +94,7 @@
       <p id="ficha-origen" class="nota"></p>
       <div class="foto-wrap">
         <img id="foto-preview" alt="">
-        <label class="sec boton">📷 Foto
-          <input id="input-foto" type="file" accept="image/*" capture="environment" hidden>
-        </label>
+        <button type="button" id="btn-foto" class="sec boton">📷 Foto</button>
       </div>
       <label>Código de barras <input name="codigo_barras" readonly></label>
       <label>Nombre <input name="nombre" required></label>
@@ -136,9 +134,7 @@
     </div>
     <div class="fila">
       <button id="btn-escanear-venta">Escanear</button>
-      <label class="boton sec">📷 Sin código
-        <input id="input-foto-venta" type="file" accept="image/*" capture="environment" hidden>
-      </label>
+      <button type="button" id="btn-foto-venta" class="sec">📷 Sin código</button>
     </div>
     <form id="form-buscar-venta" class="fila">
       <input id="buscar-venta" placeholder="Nombre o código" autocomplete="off">
@@ -207,6 +203,16 @@
     <button data-tab="venta"><span>🛍</span>Vender</button>
     <button data-tab="reporte"><span>📊</span>Ventas</button>
   </nav>
+
+  <!-- CÁMARA DENTRO DE LA APP (evita que Android cierre la app por memoria al abrir la cámara externa) -->
+  <div id="camara" hidden>
+    <video id="video-camara" playsinline muted></video>
+    <div class="camara-barra">
+      <button type="button" id="cam-cancelar" class="cam-txt">Cancelar</button>
+      <button type="button" id="cam-tomar" class="cam-disparo" aria-label="Tomar foto"></button>
+      <label class="cam-txt">Galería<input id="cam-galeria" type="file" accept="image/*" hidden></label>
+    </div>
+  </div>
 
   <div id="toast" hidden></div>
 

@@ -185,3 +185,12 @@ body.con-tabs section{padding-bottom:calc(6.5rem + env(safe-area-inset-bottom))}
 .specs .k{color:var(--gris);flex:none}
 .specs .v{text-align:right;font-weight:500}
 .specs .agotado{color:#ff3b30}.specs .poco{color:#ff9500}.specs .hay{color:#34c759}
+
+/* Cámara en la app */
+#camara{position:fixed;inset:0;z-index:50;background:#000;display:flex;flex-direction:column}
+#camara[hidden]{display:none}
+#video-camara{flex:1;width:100%;object-fit:cover;min-height:0}
+.camara-barra{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem calc(1.4rem + env(safe-area-inset-bottom));background:#000}
+.cam-txt{background:none;box-shadow:none;color:#fff;font-size:1rem;font-weight:500;width:5.5rem;padding:.5rem 0;text-align:center;cursor:pointer}
+.cam-disparo{width:74px;height:74px;border-radius:50%;padding:0;background:#fff;box-shadow:0 0 0 4px #000,0 0 0 7px #fff;flex:none}
+.cam-disparo:active{transform:scale(.92)}

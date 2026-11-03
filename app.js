@@ -222,30 +222,78 @@ async function abrirFicha(codigo, prod) {
 }
 $('#btn-cancelar').addEventListener('click', () => mostrar('escaner'));
 
+// Decodifica la imagen ya reducida: una foto de 50 MP completa revienta la memoria de teléfonos sencillos
+async function bitmapReducido(file, max = 1280) {
+  try {
+    const prueba = await createImageBitmap(file, { resizeWidth: max, resizeQuality: 'medium' });
+    if (prueba.height > max * 1.5) {      // foto vertical: limita por alto
+      const k = max / prueba.height; const w = Math.round(prueba.width * k); prueba.close?.();
+      return await createImageBitmap(file, { resizeWidth: w, resizeHeight: max, resizeQuality: 'medium' });
+    }
+    return prueba;
+  } catch {
+    return await createImageBitmap(file);
+  }
+}
+
 // Foto: recorte cuadrado al centro, 600px, WebP (JPEG si el navegador no soporta WebP)
 async function comprimirFoto(file) {
-  const img = await createImageBitmap(file);
+  const img = await bitmapReducido(file, 900);
   const lado = Math.min(img.width, img.height), T = 600;
   const c = document.createElement('canvas'); c.width = c.height = T;
   c.getContext('2d').drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, T, T);
+  img.close?.();
   let b = await new Promise(r => c.toBlob(r, 'image/webp', 0.8));
   if (!b || b.type !== 'image/webp') b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.82));
   return b;
 }
-$('#input-foto').addEventListener('change', async e => {
-  const file = e.target.files[0]; if (!file) return;
+$('#btn-foto').addEventListener('click', async () => {
+  const file = await pedirFoto(); if (!file) return;
   fotoBlob = await comprimirFoto(file);
   $('#foto-preview').src = URL.createObjectURL(fotoBlob);
   leerEtiqueta(file);
 });
 
+// ---------- Cámara dentro de la app ----------
+let camStream = null, camResolver = null;
+function cerrarCamara(resultado = null) {
+  camStream?.getTracks().forEach(t => t.stop()); camStream = null;
+  $('#video-camara').srcObject = null; $('#camara').hidden = true;
+  const r = camResolver; camResolver = null; r?.(resultado);
+}
+async function pedirFoto() {
+  detener();                                   // suelta la cámara del escáner
+  if (camResolver) cerrarCamara(null);
+  const promesa = new Promise(r => (camResolver = r));
+  $('#camara').hidden = false;
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ audio: false,
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } } });
+    const v = $('#video-camara'); v.srcObject = camStream; await v.play();
+  } catch (err) {
+    console.warn(err); toast('No pude abrir la cámara; elige de la galería.');
+  }
+  return promesa;
+}
+$('#cam-cancelar').addEventListener('click', () => cerrarCamara(null));
+$('#cam-tomar').addEventListener('click', async () => {
+  const v = $('#video-camara'); if (!v.videoWidth) return;
+  const k = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+  const c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  navigator.vibrate?.(20);
+  cerrarCamara(await new Promise(r => c.toBlob(r, 'image/jpeg', 0.88)));
+});
+$('#cam-galeria').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = ''; cerrarCamara(f || null); });
+
 // Imagen completa (sin recorte) a 1280px para que la IA lea bien la etiqueta
 async function imagenParaIA(file) {
-  const img = await createImageBitmap(file);
+  const img = await bitmapReducido(file, 1280);
   const k = Math.min(1, 1280 / Math.max(img.width, img.height));
   const c = document.createElement('canvas');
   c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); img.close?.();
   const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
   const buf = new Uint8Array(await b.arrayBuffer());
   let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
@@ -403,9 +451,8 @@ $('#form-buscar-venta').addEventListener('submit', async e => {
 });
 
 // Sin código: toma foto y elige el producto viéndolo en la rejilla de fotos
-$('#input-foto-venta').addEventListener('change', async e => {
-  const file = e.target.files[0]; e.target.value = ''; if (!file) return;
-  detener();
+$('#btn-foto-venta').addEventListener('click', async () => {
+  const file = await pedirFoto(); if (!file) return;
   abrirElegir(await comprimirFoto(file), '');
 });
 
