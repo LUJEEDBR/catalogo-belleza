@@ -1,6 +1,6 @@
 // Service worker: la app abre sin internet; datos de Supabase siempre van a la red.
-const VERSION = 'cb-v5';
-const APP = ['/', '/index.html', '/app.js', '/config.js', '/db.js', '/sync.js', '/styles.css',
+const VERSION = 'cb-v6';
+const APP = ['/', '/index.html', '/app.js', '/config.js', '/db.js', '/sync.js', '/styles.css', '/vendor/supabase.js',
              '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -39,8 +39,13 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Archivos de la app: red primero (para actualizaciones), cache si no hay internet
-  e.respondWith(fetch(e.request)
-    .then(res => { caches.open(VERSION).then(c => c.put(e.request, res.clone())); return res; })
-    .catch(() => caches.match(e.request).then(r => r || caches.match('/index.html'))));
+  // Archivos de la app: cache primero (abre al instante) y se actualiza en segundo plano
+  const red = fetch(e.request).then(res => {
+    if (res.ok) { const copia = res.clone(); caches.open(VERSION).then(c => c.put(e.request, copia)); }
+    return res;
+  });
+  e.respondWith(caches.match(e.request, { ignoreSearch: e.request.mode === 'navigate' }).then(hit => {
+    if (hit) { e.waitUntil(red.catch(() => {})); return hit; }
+    return red.catch(() => caches.match('/index.html'));
+  }));
 });

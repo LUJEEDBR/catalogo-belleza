@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from './vendor/supabase.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
 import * as db from './db.js';
 import { sincronizar, descargarCatalogo } from './sync.js';
@@ -45,8 +45,11 @@ async function sync() {
 let fotosPrecargadas = false;
 async function precargarFotos() {
   if (fotosPrecargadas || !navigator.onLine) return; fotosPrecargadas = true;
+  if (navigator.connection?.saveData) return;
+  await new Promise(r => setTimeout(r, 5000));   // primero que la app responda
   const urls = (await db.todosLosProductos()).map(p => p.foto_url).filter(u => u && u.includes('/storage/v1/object/public/'));
-  for (const u of urls) await fetch(u).catch(() => {});
+  const trabajador = async () => { while (urls.length) await fetch(urls.shift()).catch(() => {}); };
+  await Promise.all([trabajador(), trabajador(), trabajador()]);
 }
 addEventListener('online', sync); addEventListener('offline', pintarRed);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
@@ -56,16 +59,19 @@ setInterval(sync, 60000); pintarRed();
 async function cargarPerfil() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { perfil = null; $('#btn-salir').hidden = true; return mostrar('login'); }
-  const { data } = await sb.from('usuarios').select('id,nombre,rol').eq('id', session.user.id).maybeSingle()
-    .then(r => r, () => ({ data: null }));
-  if (data) localStorage.setItem('perfil', JSON.stringify(data));
-  perfil = data || JSON.parse(localStorage.getItem('perfil') || 'null')
-    || { id: session.user.id, nombre: session.user.email, rol: 'empleado' };
-  $('#btn-salir').hidden = false;
-  $('#rol-info').textContent = `Hola, ${perfil.nombre} · ${perfil.rol === 'dueno' ? 'dueña' : 'empleado'}`;
-  mostrar('escaner');
-  cargarMarcas();
-  sync(); // sube pendientes y baja el catálogo a este teléfono
+  const guardado = JSON.parse(localStorage.getItem('perfil') || 'null');
+  const pintarPerfil = () => ($('#rol-info').textContent =
+    `Hola, ${perfil.nombre} · ${perfil.rol === 'dueno' ? 'dueña' : 'empleado'}`);
+  const yaVisible = !!perfil;
+  perfil = guardado?.id === session.user.id ? guardado : { id: session.user.id, nombre: session.user.email, rol: 'empleado' };
+  $('#btn-salir').hidden = false; pintarPerfil();
+  if (!yaVisible) abrirBuscar();   // abre de inmediato con la copia local
+  // Perfil y catálogo se actualizan sin bloquear la pantalla
+  const pedir = sb.from('usuarios').select('id,nombre,rol').eq('id', session.user.id).maybeSingle();
+  Promise.race([pedir, new Promise(r => setTimeout(() => r({ data: null }), 8000))]).then(({ data }) => {
+    if (data) { perfil = data; localStorage.setItem('perfil', JSON.stringify(data)); pintarPerfil(); }
+  }, () => {});
+  setTimeout(() => { cargarMarcas(); sync(); }, 800);
 }
 
 $('#form-login').addEventListener('submit', async e => {
@@ -93,21 +99,28 @@ async function iniciar(modo = 'captura') {
   esc_ = ESCANERES[modo]; const video = esc_.video();
   corriendo = true; esc_.btn().textContent = 'Detener';
   if (modo === 'buscar') $('#wrap-video-buscar').hidden = false;
-  if ('BarcodeDetector' in window) {
+  const nativo = 'BarcodeDetector' in window &&
+    (await BarcodeDetector.getSupportedFormats().catch(() => [])).includes('ean_13');
+  if (nativo) {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     video.srcObject = stream; await video.play();
-    const det = new BarcodeDetector({ formats: FORMATOS });
+    const sop = await BarcodeDetector.getSupportedFormats();
+    const det = new BarcodeDetector({ formats: FORMATOS.filter(f => sop.includes(f)) });
+    // ~7 lecturas por segundo: suficiente y no calienta teléfonos sencillos
     const loop = async () => {
       if (!corriendo) return;
       try { const r = await det.detect(video); if (r[0]) await leer(r[0].rawValue); } catch {}
-      requestAnimationFrame(loop);
+      if (corriendo) setTimeout(loop, 140);
     };
     loop();
   } else {
+    if (!window.ZXing) await cargarScript('/vendor/zxing.min.js');   // solo si el teléfono no trae lector nativo
     zxing = new ZXing.BrowserMultiFormatReader();
     zxing.decodeFromConstraints({ video: { facingMode: 'environment' } }, video, r => { if (r) leer(r.getText()); });
   }
 }
+const cargarScript = src => new Promise((ok, mal) => {
+  const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = mal; document.head.append(s); });
 function leer(codigo) {
   const ahora = Date.now();
   if (codigo === ultimo.codigo && ahora - ultimo.t < 2500) return; // evita lecturas dobles
@@ -323,7 +336,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
   detener(); mostrar(b.dataset.tab);
   if (b.dataset.tab === 'reporte') pintarReporte();
   if (b.dataset.tab === 'venta') pintarCarrito();
-  if (b.dataset.tab === 'buscar') abrirBuscar();
+  if (b.dataset.tab === 'buscar') abrirBuscar(true);
 }));
 const fotoDe = p => p?.foto_local instanceof Blob ? URL.createObjectURL(p.foto_local) : p?.foto_url || '';
 const miniatura = p => fotoDe(p) ? `<img src="${esc(fotoDe(p))}" alt="" loading="lazy">` : '<span class="sin-foto">💄</span>';
@@ -530,12 +543,12 @@ let enDetalle = null;
 const UNIDAD = { ml: 'ml', g: 'g', pzas: 'pzas' };
 const presentacion = p => p.presentacion_cantidad ? `${Number(p.presentacion_cantidad)} ${UNIDAD[p.presentacion_unidad] || ''}`.trim() : '';
 
-async function abrirBuscar() {
+async function abrirBuscar(enfocar = false) {
   mostrar('buscar');
   inventario = (await db.todosLosProductos()).map(p => ({ p,
     clave: normal([p.nombre, p.marcas?.nombre, p.codigo_barras, p.codigo_interno, p.ubicacion_detalle].join(' ')) }));
   pintarResultados();
-  setTimeout(() => $('#buscar-inv').focus({ preventScroll: true }), 50);
+  if (enfocar) setTimeout(() => $('#buscar-inv').focus({ preventScroll: true }), 50);
 }
 
 function pintarResultados() {
