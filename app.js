@@ -169,7 +169,8 @@ async function alLeer(codigo) {
   const rafaga = $('#chk-rafaga').checked;
   const prod = await buscarPorCodigo(codigo);
   bip(!!prod);
-  if (prod && rafaga) { toast(`${prod.nombre} · $${prod.precio_publico ?? '—'} · ${prod.existencia} pzas`); return; }
+  if (prod && rafaga) { toast(`⚠️ Ya está en inventario: ${prod.nombre} · ${prod.existencia} pzas`); return; }
+  if (prod) toast(`⚠️ Ya está en inventario: ${prod.nombre}`);
   detener();
   abrirFicha(codigo, prod);
 }
@@ -205,6 +206,48 @@ async function buscarOBF(codigo) {
   } catch { return null; }
 }
 
+// ---------- Protección de duplicados ----------
+const nombreClave = t => String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, ' ').trim();
+const mismaPresentacion = (a, b) => {
+  const ca = Number(a.presentacion_cantidad), cb = Number(b.presentacion_cantidad);
+  if (!ca || !cb) return true;                       // si a uno le falta, se considera el mismo
+  return ca === cb && (!a.presentacion_unidad || !b.presentacion_unidad || a.presentacion_unidad === b.presentacion_unidad);
+};
+const mismaMarca = (a, b) => !a || !b || nombreClave(a) === nombreClave(b);
+// Busca un producto ya registrado con el mismo código, o el mismo nombre (misma marca y presentación)
+async function buscarDuplicado({ codigo, nombre, marca, presentacion_cantidad, presentacion_unidad }, excluirId) {
+  if (codigo) {
+    const p = await buscarPorCodigo(codigo);
+    if (p && p.id !== excluirId) return { p, por: 'código' };
+  }
+  const clave = nombreClave(nombre); if (!clave) return null;
+  let candidatos = (await db.todosLosProductos()).filter(p => nombreClave(p.nombre) === clave);
+  if (navigator.onLine) {
+    try {
+      const palabras = clave.split(' ').filter(w => w.length > 2).slice(0, 3);
+      let q = sb.from('productos').select('*, marcas(nombre)').limit(50);
+      for (const w of palabras) q = q.ilike('nombre', `%${w}%`);
+      const { data } = await q;
+      for (const p of data || []) if (nombreClave(p.nombre) === clave && !candidatos.some(c => c.id === p.id)) candidatos.push(p);
+    } catch { /* sin red: basta la copia local */ }
+  }
+  const nuevo = { presentacion_cantidad, presentacion_unidad };
+  const p = candidatos.find(c => c.id !== excluirId && mismaMarca(c.marcas?.nombre, marca) && mismaPresentacion(c, nuevo));
+  return p ? { p, por: 'nombre' } : null;
+}
+const describir = p => [p.nombre, p.marcas?.nombre, p.presentacion_cantidad && `${p.presentacion_cantidad} ${p.presentacion_unidad || ''}`.trim()]
+  .filter(Boolean).join(' · ');
+async function avisarDuplicado() {
+  const f = $('#form-producto'), msg = $('#ficha-msg');
+  const dup = await buscarDuplicado({ codigo: actual ? null : f.codigo_barras.value.trim(), nombre: f.nombre.value,
+    marca: f.marca.value, presentacion_cantidad: f.presentacion_cantidad.value, presentacion_unidad: f.presentacion_unidad.value }, actual?.id);
+  msg.textContent = dup ? `⚠️ Ya está en inventario (mismo ${dup.por}): ${describir(dup.p)} · ${dup.p.existencia ?? 0} pzas` : '';
+  return dup;
+}
+for (const campo of ['nombre', 'marca', 'presentacion_cantidad', 'presentacion_unidad', 'codigo_barras'])
+  $('#form-producto')[campo]?.addEventListener('change', () => avisarDuplicado());
+
 // ---------- Ficha ----------
 async function abrirFicha(codigo, prod) {
   const f = $('#form-producto'); f.reset();
@@ -213,7 +256,7 @@ async function abrirFicha(codigo, prod) {
   $('#ficha-msg').textContent = '';
   f.codigo_barras.value = codigo || '';
   if (prod) {
-    $('#ficha-origen').textContent = 'Producto ya registrado';
+    $('#ficha-origen').textContent = `⚠️ Ya está en inventario · ${prod.existencia ?? 0} pzas · aquí lo puedes editar`;
     for (const k of ['nombre', 'presentacion_cantidad', 'presentacion_unidad', 'genero', 'precio_publico',
       'existencia', 'ubicacion', 'ubicacion_detalle']) if (prod[k] != null) f[k].value = prod[k];
     f.marca.value = prod.marcas?.nombre || '';
@@ -335,6 +378,7 @@ async function leerEtiqueta(file) {
     if (f.descripcion) poner('descripcion', data.descripcion);
     origen.textContent = n ? `✨ Llené ${n} campo${n > 1 ? 's' : ''} con la foto · revísalos y pon el precio` : antes;
     if (n) { bip(true); navigator.vibrate?.(30); f.precio_publico.focus(); }
+    if (await avisarDuplicado()) bip(false);
   } catch (err) {
     console.warn('leer-etiqueta', err);
     origen.textContent = antes;
@@ -353,6 +397,14 @@ $('#form-producto').addEventListener('submit', async e => {
   const f = e.target, btn = f.querySelector('button[type=submit]');
   btn.disabled = true;
   try {
+    // No deja registrar dos veces el mismo producto
+    const dup = await avisarDuplicado();
+    if (dup) {
+      bip(false);
+      if (confirm(`Este producto ya está en inventario (mismo ${dup.por}):\n\n${describir(dup.p)}\nExistencia: ${dup.p.existencia ?? 0} pzas\n\n¿Abrir el que ya existe para editarlo?`))
+        abrirFicha(dup.p.codigo_barras || dup.p.codigo_interno, dup.p);
+      return;
+    }
     const num = v => (v === '' ? null : Number(v));
     const fila = {
       nombre: f.nombre.value.trim(),
@@ -505,6 +557,14 @@ $('#btn-elegir-cancelar').addEventListener('click', () => mostrar('venta'));
 $('#form-alta-rapida').addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target;
+  const dup = await buscarDuplicado({ nombre: f.nombre.value });
+  if (dup) {
+    bip(false);
+    if (confirm(`"${describir(dup.p)}" ya está en inventario (${dup.p.existencia ?? 0} pzas).\n\n¿Agregar ese al carrito en lugar de darlo de alta otra vez?`)) {
+      agregarAlCarrito(dup.p, fotoVenta); mostrar('venta');
+    }
+    return;
+  }
   const fila = { id: crypto.randomUUID(), nombre: f.nombre.value.trim(), precio_publico: Number(f.precio_publico.value),
     existencia: 1, ubicacion: 'anaquel', cambio_cliente_en: new Date().toISOString() };
   const op = { tipo: 'insert', id: fila.id, fila };
