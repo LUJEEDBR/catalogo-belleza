@@ -9,7 +9,12 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 const $ = s => document.querySelector(s);
 const vistas = ['login', 'buscar', 'detalle', 'escaner', 'ficha', 'venta', 'elegir', 'reporte'];
+const MODO_VISTA = { buscar: 'buscar', escaner: 'captura', venta: 'venta' };
+let vistaActual = null;
 const mostrar = v => {
+  vistaActual = v;
+  // La cámara se abre sola en Buscar, Capturar y Vender
+  setTimeout(() => { if (vistaActual === v && MODO_VISTA[v] && $('#camara').hidden) autoCamara(MODO_VISTA[v]); }, 60);
   vistas.forEach(n => ($(`#vista-${n}`).hidden = n !== v));
   const tabs = v !== 'login'; $('#tabs').hidden = !tabs; document.body.classList.toggle('con-tabs', tabs);
   const tab = { ficha: 'escaner', elegir: 'venta', detalle: 'buscar' }[v] || v;
@@ -101,8 +106,10 @@ async function iniciar(modo = 'captura') {
   const nativo = 'BarcodeDetector' in window &&
     (await BarcodeDetector.getSupportedFormats().catch(() => [])).includes('ean_13');
   if (nativo) {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    video.srcObject = stream; await video.play();
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    if (!corriendo || esc_ !== ESCANERES[modo]) { st.getTracks().forEach(t => t.stop()); return; } // ya cambiaste de vista
+    stream?.getTracks().forEach(t => t.stop());
+    stream = st; video.srcObject = stream; await video.play();
     const sop = await BarcodeDetector.getSupportedFormats();
     const det = new BarcodeDetector({ formats: FORMATOS.filter(f => sop.includes(f)) });
     // ~7 lecturas por segundo: suficiente y no calienta teléfonos sencillos
@@ -133,6 +140,15 @@ function detener() {
   if (zxing) { zxing.reset(); zxing = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
 }
+function autoCamara(modo) {
+  if (document.hidden || (corriendo && esc_ === ESCANERES[modo])) return;
+  iniciar(modo).catch(err => { detener(); console.warn('cámara', err); });
+}
+// Apaga la cámara al salir de la app y la vuelve a prender al regresar
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) detener();
+  else if (MODO_VISTA[vistaActual] && $('#camara').hidden) autoCamara(MODO_VISTA[vistaActual]);
+});
 const alternar = modo => () => (corriendo && esc_ === ESCANERES[modo] ? detener() : iniciar(modo).catch(err => {
   detener(); toast('No pude abrir la cámara: revisa el permiso.'); console.error(err); }));
 $('#btn-escanear').addEventListener('click', alternar('captura'));
