@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Catálogo Belleza</title>
+  <meta name="theme-color" content="#c2185b">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Catálogo">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Catálogo Belleza</h1>
+    <span id="estado-red" class="pill">en línea</span>
+    <button id="btn-salir" class="link" hidden>Salir</button>
+  </header>
+
+  <!-- LOGIN -->
+  <section id="vista-login" hidden>
+    <form id="form-login" class="card">
+      <h2>Entrar</h2>
+      <label>Correo <input type="email" name="email" required autocomplete="username"></label>
+      <label>Contraseña <input type="password" name="password" required autocomplete="current-password"></label>
+      <button type="submit">Entrar</button>
+      <p id="login-error" class="error"></p>
+    </form>
+  </section>
+
+  <!-- ESCÁNER -->
+  <section id="vista-escaner" hidden>
+    <div class="video-wrap">
+      <video id="video" playsinline muted></video>
+      <div class="mira"></div>
+    </div>
+    <div class="fila">
+      <button id="btn-escanear">Escanear</button>
+      <label class="switch"><input type="checkbox" id="chk-rafaga"> Modo ráfaga</label>
+    </div>
+    <form id="form-manual" class="fila">
+      <input id="codigo-manual" inputmode="numeric" placeholder="o escribe el código">
+      <button type="submit" class="sec">Buscar</button>
+      <button type="button" id="btn-sin-codigo" class="sec">Sin código</button>
+    </form>
+    <p id="rol-info" class="nota"></p>
+  </section>
+
+  <!-- FICHA / CAPTURA -->
+  <section id="vista-ficha" hidden>
+    <form id="form-producto" class="card">
+      <p id="ficha-origen" class="nota"></p>
+      <div class="foto-wrap">
+        <img id="foto-preview" alt="">
+        <label class="sec boton">📷 Foto
+          <input id="input-foto" type="file" accept="image/*" capture="environment" hidden>
+        </label>
+      </div>
+      <label>Código de barras <input name="codigo_barras" readonly></label>
+      <label>Nombre <input name="nombre" required></label>
+      <label>Marca <input name="marca" list="lista-marcas"></label>
+      <datalist id="lista-marcas"></datalist>
+      <div class="fila">
+        <label>Cantidad <input name="presentacion_cantidad" type="number" step="0.01"></label>
+        <label>Unidad
+          <select name="presentacion_unidad"><option value="">—</option><option>ml</option><option>g</option><option>pzas</option></select>
+        </label>
+      </div>
+      <label>Género
+        <select name="genero"><option value="">—</option><option>mujer</option><option>hombre</option><option>unisex</option></select>
+      </label>
+      <hr>
+      <label>Precio público <input name="precio_publico" type="number" step="0.01" inputmode="decimal" required></label>
+      <div class="fila">
+        <label>Existencia <input name="existencia" type="number" inputmode="numeric" value="1"></label>
+        <label>Ubicación
+          <select name="ubicacion"><option>anaquel</option><option>bodega</option></select>
+        </label>
+      </div>
+      <label>Lugar exacto <input name="ubicacion_detalle" placeholder="Anaquel 3, repisa 2"></label>
+      <div class="fila">
+        <button type="submit">Guardar</button>
+        <button type="button" id="btn-cancelar" class="sec">Cancelar</button>
+      </div>
+      <p id="ficha-msg" class="nota"></p>
+    </form>
+  </section>
+
+  <!-- VENDER -->
+  <section id="vista-venta" hidden>
+    <div class="video-wrap corto">
+      <video id="video-venta" playsinline muted></video>
+      <div class="mira"></div>
+    </div>
+    <div class="fila">
+      <button id="btn-escanear-venta">Escanear</button>
+      <label class="boton sec">📷 Sin código
+        <input id="input-foto-venta" type="file" accept="image/*" capture="environment" hidden>
+      </label>
+    </div>
+    <form id="form-buscar-venta" class="fila">
+      <input id="buscar-venta" placeholder="Nombre o código" autocomplete="off">
+      <button type="submit" class="sec">Agregar</button>
+    </form>
+
+    <h3 class="encabezado">Carrito <span id="carrito-cuenta"></span></h3>
+    <ul id="carrito" class="lista"></ul>
+    <p id="carrito-vacio" class="vacio">Escanea un producto para empezar</p>
+
+    <div class="cobro">
+      <div class="segmentado" id="metodo-pago">
+        <button type="button" data-v="efectivo" class="activo">Efectivo</button>
+        <button type="button" data-v="tarjeta">Tarjeta</button>
+        <button type="button" data-v="transferencia">Transfer.</button>
+      </div>
+      <button id="btn-cobrar" disabled>Cobrar $0.00</button>
+    </div>
+  </section>
+
+  <!-- ELEGIR PRODUCTO POR FOTO / NOMBRE -->
+  <section id="vista-elegir" hidden>
+    <div class="elegir-top">
+      <img id="foto-venta-preview" alt="Foto tomada">
+      <div>
+        <h3>¿Cuál es?</h3>
+        <p class="nota">Compáralo con tus fotos o búscalo por nombre.</p>
+      </div>
+    </div>
+    <input id="buscar-elegir" placeholder="Buscar por nombre o marca" autocomplete="off">
+    <div id="rejilla" class="rejilla"></div>
+    <form id="form-alta-rapida" class="card">
+      <p class="nota">¿No está? Dalo de alta rápido</p>
+      <label>Nombre <input name="nombre" required placeholder="Ej. Labial mate rojo"></label>
+      <label>Precio <input name="precio_publico" type="number" step="0.01" inputmode="decimal" required placeholder="$0.00"></label>
+      <div class="fila">
+        <button type="submit">Alta y agregar</button>
+        <button type="button" id="btn-elegir-cancelar" class="sec">Cancelar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- REPORTE -->
+  <section id="vista-reporte" hidden>
+    <div class="segmentado" id="rango">
+      <button type="button" data-d="1" class="activo">Hoy</button>
+      <button type="button" data-d="7">7 días</button>
+      <button type="button" data-d="30">30 días</button>
+    </div>
+    <div class="tiles">
+      <div class="tile grande"><span>Vendido</span><b id="r-total">$0</b></div>
+      <div class="tile"><span>Ventas</span><b id="r-num">0</b></div>
+      <div class="tile"><span>Ticket prom.</span><b id="r-prom">$0</b></div>
+    </div>
+    <h3 class="encabezado">Por hora</h3>
+    <div id="r-horas" class="barras"></div>
+    <h3 class="encabezado">Por día</h3>
+    <ul id="r-dias" class="lista"></ul>
+    <h3 class="encabezado">Más vendidos</h3>
+    <ul id="r-top" class="lista"></ul>
+  </section>
+
+  <nav id="tabs" hidden>
+    <button data-tab="escaner" class="activo"><span>📷</span>Capturar</button>
+    <button data-tab="venta"><span>🛍</span>Vender</button>
+    <button data-tab="reporte"><span>📊</span>Ventas</button>
+  </nav>
+
+  <div id="toast" hidden></div>
+
+  <script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
