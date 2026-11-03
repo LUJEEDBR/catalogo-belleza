@@ -248,11 +248,19 @@ async function avisarDuplicado() {
 for (const campo of ['nombre', 'marca', 'presentacion_cantidad', 'presentacion_unidad', 'codigo_barras'])
   $('#form-producto')[campo]?.addEventListener('change', () => avisarDuplicado());
 
+let urlPreview = null;
+function ponerPreview(src) {
+  if (urlPreview) { URL.revokeObjectURL(urlPreview); urlPreview = null; }
+  if (src instanceof Blob) src = urlPreview = URL.createObjectURL(src);
+  $('#foto-preview').src = src || '';
+}
+
 // ---------- Ficha ----------
 async function abrirFicha(codigo, prod) {
   const f = $('#form-producto'); f.reset();
   actual = prod; fotoBlob = null; fotoUrlExterna = null;
-  $('#foto-preview').src = prod?.foto_url || '';
+  lecturaId++; lecturaCtl?.abort();               // una lectura vieja nunca llena otro producto
+  ponerPreview(prod?.foto_url || '');
   $('#ficha-msg').textContent = '';
   f.codigo_barras.value = codigo || '';
   if (prod) {
@@ -268,7 +276,7 @@ async function abrirFicha(codigo, prod) {
     if (obf) {
       f.nombre.value = obf.nombre; f.marca.value = obf.marca;
       f.presentacion_cantidad.value = obf.presentacion_cantidad; f.presentacion_unidad.value = obf.presentacion_unidad;
-      if (obf.foto) { fotoUrlExterna = obf.foto; $('#foto-preview').src = obf.foto; }
+      if (obf.foto) { fotoUrlExterna = obf.foto; ponerPreview(obf.foto); }
       $('#ficha-origen').textContent = 'Nuevo · datos de Open Beauty Facts (revísalos y toma tu foto)';
     } else $('#ficha-origen').textContent = 'Nuevo · no hay datos en línea, captúralo y toma foto';
   } else {
@@ -308,7 +316,7 @@ async function comprimirFoto(file) {
 $('#btn-foto').addEventListener('click', async () => {
   const file = await pedirFoto(); if (!file) return;
   fotoBlob = await comprimirFoto(file);
-  $('#foto-preview').src = URL.createObjectURL(fotoBlob);
+  ponerPreview(fotoBlob);
   leerEtiqueta(file);
 });
 
@@ -347,26 +355,37 @@ $('#cam-galeria').addEventListener('change', e => {
 
 // Imagen completa (sin recorte) a 1280px para que la IA lea bien la etiqueta
 async function imagenParaIA(file) {
-  const img = await bitmapReducido(file, 1280);
-  const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+  const img = await bitmapReducido(file, 1024);
+  const k = Math.min(1, 1024 / Math.max(img.width, img.height));
   const c = document.createElement('canvas');
   c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); img.close?.();
-  const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+  const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+  c.width = c.height = 0;                          // libera la memoria del canvas (iPhone)
   const buf = new Uint8Array(await b.arrayBuffer());
   let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
   return btoa(bin);
 }
 
 // Al tomar foto: la IA lee la etiqueta y llena los campos vacíos (nunca pisa lo ya capturado)
+let lecturaId = 0, lecturaCtl = null;
 async function leerEtiqueta(file) {
   if (!navigator.onLine) return;
+  const mio = ++lecturaId; lecturaCtl?.abort();
+  const ctl = lecturaCtl = new AbortController();
+  const reloj = setTimeout(() => ctl.abort(), 25000);   // nunca se queda colgada
   const f = $('#form-producto'), origen = $('#ficha-origen'), antes = origen.textContent;
-  origen.textContent = '✨ Leyendo la etiqueta…';
+  origen.textContent = '✨ Leyendo la etiqueta… (puedes seguir capturando)';
   try {
-    const { data, error } = await sb.functions.invoke('leer-etiqueta', {
-      body: { imagen: await imagenParaIA(file), mime: 'image/jpeg' } });
-    if (error || !data || data.error) throw error || new Error(data?.error || 'sin datos');
+    const { data: { session } } = await sb.auth.getSession();
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/leer-etiqueta`, {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ imagen: await imagenParaIA(file), mime: 'image/jpeg' }) });
+    const data = await r.json().catch(() => null);
+    if (mio !== lecturaId) return;                       // ya pasaste a otro producto
+    if (!r.ok || !data || data.error) throw new Error(data?.error || `HTTP ${r.status}`);
     let n = 0;
     const poner = (campo, valor) => {
       if (valor == null || valor === '' || !f[campo] || f[campo].value) return;
@@ -380,9 +399,13 @@ async function leerEtiqueta(file) {
     if (n) { bip(true); navigator.vibrate?.(30); f.precio_publico.focus(); }
     if (await avisarDuplicado()) bip(false);
   } catch (err) {
+    if (mio !== lecturaId) return;
     console.warn('leer-etiqueta', err);
     origen.textContent = antes;
-    toast('No pude leer la etiqueta, captúrala a mano.');
+    toast(err.name === 'AbortError' ? 'La lectura tardó demasiado; captúralo a mano o toma otra foto.' : 'No pude leer la etiqueta, captúrala a mano.', 3500);
+  } finally {
+    clearTimeout(reloj);
+    if (lecturaCtl === ctl) lecturaCtl = null;
   }
 }
 

@@ -37,30 +37,40 @@ Deno.serve(async (req) => {
   try {
     const { imagen, mime } = await req.json();
     if (!imagen) return json({ error: "sin_imagen" }, 400);
-    const cuerpo = JSON.stringify({
+    const armar = (pensar: boolean) => JSON.stringify({
       contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mime || "image/jpeg", data: imagen } }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0.1 },
+      generationConfig: {
+        responseMimeType: "application/json", responseSchema: schema, temperature: 0.1,
+        // Leer una etiqueta no necesita "pensar": responde en 2-3 s en lugar de 8
+        ...(pensar ? {} : { thinkingConfig: { thinkingLevel: "low" } }),
+      },
     });
-    // Varios modelos de respaldo: si uno está saturado o retirado, prueba el siguiente
     const modelos = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
       .filter((m, i, a) => m && a.indexOf(m) === i) as string[];
+    const limite = Date.now() + 22000;                  // la app espera máximo 25 s
     let d: any = null, ultimo = "";
     for (const m of modelos) {
-      for (let intento = 0; intento < 2; intento++) {
-        const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: cuerpo },
-        );
-        const j = await r.json();
+      let sinPensar = true;
+      for (let intento = 0; intento < 3 && !d; intento++) {
+        const resta = limite - Date.now(); if (resta < 2500) break;
+        let r: Response, j: any;
+        try {
+          r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,
+            { method: "POST", headers: { "Content-Type": "application/json" }, body: armar(!sinPensar),
+              signal: AbortSignal.timeout(Math.min(14000, resta)) });
+          j = await r.json();
+        } catch (e) { ultimo = `${m}: ${String(e)}`; break; }   // tardó demasiado: siguiente modelo
         if (r.ok) { d = j; break; }
-        ultimo = `${m}: ${j?.error?.message || r.status}`;
-        if (r.status === 503 || r.status === 429) { await new Promise((s) => setTimeout(s, 1200)); continue; }
-        break; // modelo no disponible: siguiente
+        ultimo += ` | ${m}${sinPensar ? "(low)" : ""}: ${j?.error?.message || r.status}`;
+        if (r.status === 400 && sinPensar) { sinPensar = false; continue; }   // modelo sin ese ajuste: sin él
+        if ((r.status === 503 || r.status === 429) && intento === 0) { await new Promise((s) => setTimeout(s, 800)); continue; }
+        break;
       }
-      if (d) break;
+      if (d || limite - Date.now() < 2500) break;
     }
     if (!d) return json({ error: "gemini", detalle: ultimo }, 502);
-    const texto = d?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    const partes = d?.candidates?.[0]?.content?.parts || [];
+    const texto = partes.find((p: any) => p.text && !p.thought)?.text || "{}";
     return json(JSON.parse(texto));
   } catch (e) {
     return json({ error: "fallo", detalle: String(e) }, 500);
