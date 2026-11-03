@@ -60,8 +60,7 @@ async function cargarPerfil() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { perfil = null; $('#btn-salir').hidden = true; return mostrar('login'); }
   const guardado = JSON.parse(localStorage.getItem('perfil') || 'null');
-  const pintarPerfil = () => ($('#rol-info').textContent =
-    `Hola, ${perfil.nombre} · ${perfil.rol === 'dueno' ? 'dueña' : 'empleado'}`);
+  const pintarPerfil = () => ($('#rol-info').textContent = `Hola, ${perfil.nombre}`);
   const yaVisible = !!perfil;
   perfil = guardado?.id === session.user.id ? guardado : { id: session.user.id, nombre: session.user.email, rol: 'empleado' };
   $('#btn-salir').hidden = false; pintarPerfil();
