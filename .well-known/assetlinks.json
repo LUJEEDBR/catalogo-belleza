@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.catalogobelleza",
+        "sha256_cert_fingerprints": ["AC:39:3D:0E:CE:0B:43:5F:FD:41:F8:B1:D9:A5:6D:B2:1A:F8:F1:2F:16:7A:EA:C4:26:85:64:1F:8D:9C:3F:83"]
+      }
+    }]
