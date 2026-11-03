@@ -8,11 +8,11 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 const $ = s => document.querySelector(s);
-const vistas = ['login', 'escaner', 'ficha', 'venta', 'elegir', 'reporte'];
+const vistas = ['login', 'buscar', 'detalle', 'escaner', 'ficha', 'venta', 'elegir', 'reporte'];
 const mostrar = v => {
   vistas.forEach(n => ($(`#vista-${n}`).hidden = n !== v));
   const tabs = v !== 'login'; $('#tabs').hidden = !tabs; document.body.classList.toggle('con-tabs', tabs);
-  const tab = { ficha: 'escaner', elegir: 'venta' }[v] || v;
+  const tab = { ficha: 'escaner', elegir: 'venta', detalle: 'buscar' }[v] || v;
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('activo', b.dataset.tab === tab));
 };
 const dinero = n => '$' + Number(n || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -85,12 +85,14 @@ const FORMATOS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'i
 const ESCANERES = {
   captura: { video: () => $('#video'), btn: () => $('#btn-escanear'), alLeer: c => alLeer(c) },
   venta:   { video: () => $('#video-venta'), btn: () => $('#btn-escanear-venta'), alLeer: c => agregarPorCodigo(c) },
+  buscar:  { video: () => $('#video-buscar'), btn: () => $('#btn-escanear-buscar'), alLeer: c => buscarEscaneado(c) },
 };
 
 async function iniciar(modo = 'captura') {
   if (corriendo) detener();
   esc_ = ESCANERES[modo]; const video = esc_.video();
   corriendo = true; esc_.btn().textContent = 'Detener';
+  if (modo === 'buscar') $('#wrap-video-buscar').hidden = false;
   if ('BarcodeDetector' in window) {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
     video.srcObject = stream; await video.play();
@@ -114,7 +116,8 @@ function leer(codigo) {
 }
 function detener() {
   corriendo = false;
-  if (esc_) esc_.btn().textContent = 'Escanear';
+  if (esc_) esc_.btn().textContent = esc_ === ESCANERES.buscar ? '▦ Escanear' : 'Escanear';
+  $('#wrap-video-buscar').hidden = true;
   if (zxing) { zxing.reset(); zxing = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
 }
@@ -122,6 +125,7 @@ const alternar = modo => () => (corriendo && esc_ === ESCANERES[modo] ? detener(
   detener(); toast('No pude abrir la cámara: revisa el permiso.'); console.error(err); }));
 $('#btn-escanear').addEventListener('click', alternar('captura'));
 $('#btn-escanear-venta').addEventListener('click', alternar('venta'));
+$('#btn-escanear-buscar').addEventListener('click', alternar('buscar'));
 
 // Sonido + vibración
 const ctx = window.AudioContext ? new AudioContext() : null;
@@ -319,6 +323,7 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
   detener(); mostrar(b.dataset.tab);
   if (b.dataset.tab === 'reporte') pintarReporte();
   if (b.dataset.tab === 'venta') pintarCarrito();
+  if (b.dataset.tab === 'buscar') abrirBuscar();
 }));
 const fotoDe = p => p?.foto_local instanceof Blob ? URL.createObjectURL(p.foto_local) : p?.foto_url || '';
 const miniatura = p => fotoDe(p) ? `<img src="${esc(fotoDe(p))}" alt="" loading="lazy">` : '<span class="sin-foto">💄</span>';
@@ -515,3 +520,80 @@ async function pintarReporte() {
 
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') cargarPerfil(); });
 cargarPerfil();
+
+// =====================================================================
+// BUSCAR EN INVENTARIO (copia local: instantáneo y sin señal)
+// =====================================================================
+const normal = t => String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+let inventario = [];
+let enDetalle = null;
+const UNIDAD = { ml: 'ml', g: 'g', pzas: 'pzas' };
+const presentacion = p => p.presentacion_cantidad ? `${Number(p.presentacion_cantidad)} ${UNIDAD[p.presentacion_unidad] || ''}`.trim() : '';
+
+async function abrirBuscar() {
+  mostrar('buscar');
+  inventario = (await db.todosLosProductos()).map(p => ({ p,
+    clave: normal([p.nombre, p.marcas?.nombre, p.codigo_barras, p.codigo_interno, p.ubicacion_detalle].join(' ')) }));
+  pintarResultados();
+  setTimeout(() => $('#buscar-inv').focus({ preventScroll: true }), 50);
+}
+
+function pintarResultados() {
+  const q = normal($('#buscar-inv').value.trim());
+  const palabras = q.split(/\s+/).filter(Boolean);
+  let lista = palabras.length ? inventario.filter(x => palabras.every(w => x.clave.includes(w))) : inventario;
+  lista = lista.map(x => x.p).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  $('#buscar-cuenta').textContent = palabras.length
+    ? `${lista.length} resultado${lista.length === 1 ? '' : 's'}` : `${inventario.length} productos en inventario`;
+  $('#buscar-vacio').hidden = !(palabras.length && !lista.length);
+  $('#resultados-inv').innerHTML = lista.slice(0, 80).map(p => `
+    <li data-id="${esc(p.id)}">${miniatura(p)}
+      <div class="info"><b>${esc(p.nombre)}</b>
+        <small>${esc([p.marcas?.nombre, presentacion(p), `${p.existencia ?? 0} pzas`].filter(Boolean).join(' · '))}</small></div>
+      <span class="monto">${p.precio_publico != null ? dinero(p.precio_publico) : '—'}</span>
+    </li>`).join('');
+}
+$('#buscar-inv').addEventListener('input', pintarResultados);
+$('#buscar-inv').addEventListener('keydown', async e => {
+  if (e.key !== 'Enter') return;
+  const v = e.target.value.trim();
+  if (/^\d{6,14}$/.test(v)) { e.preventDefault(); buscarEscaneado(v); }   // código tecleado o lector USB
+});
+$('#resultados-inv').addEventListener('click', e => {
+  const li = e.target.closest('li[data-id]'); if (!li) return;
+  const x = inventario.find(i => i.p.id === li.dataset.id); if (x) abrirDetalle(x.p);
+});
+
+async function buscarEscaneado(codigo) {
+  const prod = await buscarPorCodigo(codigo);
+  bip(!!prod);
+  if (prod) { detener(); abrirDetalle(prod); return; }
+  toast(`El código ${codigo} no está registrado`);
+}
+
+function abrirDetalle(p) {
+  enDetalle = p;
+  const foto = fotoDe(p);
+  $('#det-foto').src = foto; $('#det-foto').classList.toggle('vacia', !foto);
+  $('#det-marca').textContent = p.marcas?.nombre || '';
+  $('#det-nombre').textContent = p.nombre;
+  $('#det-presentacion').textContent = [presentacion(p), p.genero && p.genero[0].toUpperCase() + p.genero.slice(1)].filter(Boolean).join(' · ');
+  $('#det-precio').textContent = p.precio_publico != null ? dinero(p.precio_publico) : 'Sin precio';
+  $('#det-mayoreo').textContent = p.precio_mayoreo != null ? `Mayoreo ${dinero(p.precio_mayoreo)}` : '';
+  const ex = Number(p.existencia ?? 0);
+  const filas = [
+    ['Existencia', `<span class="${ex <= 0 ? 'agotado' : ex <= 2 ? 'poco' : 'hay'}">${ex <= 0 ? 'Agotado' : ex + ' pzas'}</span>`],
+    ['Ubicación', esc([p.ubicacion && p.ubicacion[0].toUpperCase() + p.ubicacion.slice(1), p.ubicacion_detalle].filter(Boolean).join(' · ') || '—')],
+    ['Código', esc(p.codigo_barras || p.codigo_interno || '—')],
+    p.descripcion && ['Descripción', esc(p.descripcion)],
+    perfil?.rol === 'dueno' && p.costo != null && ['Costo', dinero(p.costo)],
+  ].filter(Boolean);
+  $('#det-specs').innerHTML = filas.map(([k, v]) => `<li><span class="k">${k}</span><span class="v">${v}</span></li>`).join('');
+  mostrar('detalle');
+}
+$('#btn-volver-detalle').addEventListener('click', () => mostrar('buscar'));
+$('#btn-det-editar').addEventListener('click', () => enDetalle && abrirFicha(enDetalle.codigo_barras || enDetalle.codigo_interno, enDetalle));
+$('#btn-det-vender').addEventListener('click', () => {
+  if (!enDetalle) return;
+  agregarAlCarrito(enDetalle); mostrar('venta'); pintarCarrito(); toast('Agregado al carrito');
+});

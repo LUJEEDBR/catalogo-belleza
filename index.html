@@ -47,6 +47,44 @@
     <p id="rol-info" class="nota"></p>
   </section>
 
+  <!-- BUSCAR EN INVENTARIO -->
+  <section id="vista-buscar" hidden>
+    <div class="buscador">
+      <input id="buscar-inv" type="search" placeholder="🔍  Nombre, marca o código" autocomplete="off" enterkeyhint="search">
+      <button id="btn-escanear-buscar" class="sec" type="button" aria-label="Escanear">▦ Escanear</button>
+    </div>
+    <div class="video-wrap corto" id="wrap-video-buscar" hidden>
+      <video id="video-buscar" playsinline muted></video>
+      <div class="mira"></div>
+    </div>
+    <p id="buscar-cuenta" class="nota buscar-cuenta"></p>
+    <ul id="resultados-inv" class="lista"></ul>
+    <p id="buscar-vacio" class="vacio" hidden>No encontré nada con eso</p>
+  </section>
+
+  <!-- DETALLE DE PRODUCTO -->
+  <section id="vista-detalle" hidden>
+    <button id="btn-volver-detalle" class="volver" type="button">‹ Buscar</button>
+    <div class="detalle-hero">
+      <img id="det-foto" alt="">
+      <div>
+        <p id="det-marca" class="det-marca"></p>
+        <h2 id="det-nombre"></h2>
+        <p id="det-presentacion" class="nota"></p>
+      </div>
+    </div>
+    <div class="det-precio">
+      <span>Precio público</span>
+      <b id="det-precio"></b>
+      <small id="det-mayoreo"></small>
+    </div>
+    <ul id="det-specs" class="lista specs"></ul>
+    <div class="fila">
+      <button id="btn-det-vender" type="button">🛍 Vender</button>
+      <button id="btn-det-editar" class="sec" type="button">Editar</button>
+    </div>
+  </section>
+
   <!-- FICHA / CAPTURA -->
   <section id="vista-ficha" hidden>
     <form id="form-producto" class="card">
@@ -161,6 +199,7 @@
   </section>
 
   <nav id="tabs" hidden>
+    <button data-tab="buscar"><span>🔍</span>Buscar</button>
     <button data-tab="escaner" class="activo"><span>📷</span>Capturar</button>
     <button data-tab="venta"><span>🛍</span>Vender</button>
     <button data-tab="reporte"><span>📊</span>Ventas</button>
