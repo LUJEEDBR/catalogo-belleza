@@ -1,0 +1,74 @@
+[
+ {
+  "id": 1,
+  "nombre": "Gotas de seda kiwi y fresa",
+  "descripcion": "",
+  "foto_url": "https://epmrlnbojacmmtkekqgh.supabase.co/storage/v1/object/public/fotos/productos/2569145710024.jpg?v=1",
+  "precio_publico": 89,
+  "presentacion_cantidad": null,
+  "presentacion_unidad": null,
+  "marcas": {
+   "nombre": "Silk Hair"
+  }
+ },
+ {
+  "id": 2,
+  "nombre": "Serum capilar anti-quiebre",
+  "descripcion": "",
+  "foto_url": "https://epmrlnbojacmmtkekqgh.supabase.co/storage/v1/object/public/fotos/productos/2581275146757.jpg?v=1",
+  "precio_publico": 189,
+  "presentacion_cantidad": 125,
+  "presentacion_unidad": "ml",
+  "marcas": {
+   "nombre": "Biometik"
+  }
+ },
+ {
+  "id": 3,
+  "nombre": "Loción capilar en ampolleta",
+  "descripcion": "",
+  "foto_url": "https://epmrlnbojacmmtkekqgh.supabase.co/storage/v1/object/public/fotos/productos/3152020121825.jpg?v=1",
+  "precio_publico": 45,
+  "presentacion_cantidad": null,
+  "presentacion_unidad": null,
+  "marcas": {
+   "nombre": "Xiomaro"
+  }
+ },
+ {
+  "id": 4,
+  "nombre": "Crema para peinar Curly",
+  "descripcion": "",
+  "foto_url": "https://epmrlnbojacmmtkekqgh.supabase.co/storage/v1/object/public/fotos/productos/4501016505511.jpg?v=1",
+  "precio_publico": 159,
+  "presentacion_cantidad": 250,
+  "presentacion_unidad": "g",
+  "marcas": {
+   "nombre": "Xiomaro"
+  }
+ },
+ {
+  "id": 5,
+  "nombre": "Ampolleta capilar açaí berry",
+  "descripcion": "",
+  "foto_url": "https://epmrlnbojacmmtkekqgh.supabase.co/storage/v1/object/public/fotos/productos/482147212377.jpg?v=1",
+  "precio_publico": 35,
+  "presentacion_cantidad": null,
+  "presentacion_unidad": null,
+  "marcas": {
+   "nombre": ""
+  }
+ },
+ {
+  "id": 6,
+  "nombre": "Aceite capilar",
+  "descripcion": "",
+  "foto_url": "https://epmrlnbojacmmtkekqgh.supabase.co/storage/v1/object/public/fotos/productos/3311000001292.jpg?v=1",
+  "precio_publico": 79,
+  "presentacion_cantidad": null,
+  "presentacion_unidad": null,
+  "marcas": {
+   "nombre": ""
+  }
+ }
+]

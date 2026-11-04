@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Carpe Diem · Tienda</title>
+  <meta name="description" content="Productos para el cabello. Pide por WhatsApp; entrega el mismo día en CDMX.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="preconnect" href="https://epmrlnbojacmmtkekqgh.supabase.co" crossorigin>
+  <link rel="stylesheet" href="/tienda.css">
+</head>
+<body>
+  <header class="t-barra">
+    <a class="t-logo" href="/tienda.html"><img src="/icons/icon-192.png" alt=""><span>CARPE DIEM</span></a>
+    <button id="t-abrir-carrito" class="t-carrito-btn" aria-label="Carrito">
+      <svg viewBox="0 0 24 24"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+      <b id="t-cuenta" hidden>0</b>
+    </button>
+  </header>
+  <div id="t-aviso" class="t-aviso" hidden></div>
+  <section class="t-hero">
+    <h1>Cuidado para tu cabello</h1>
+    <p>Pide por WhatsApp. En CDMX, pedidos mayores a $500 cerca del Metro se entregan el mismo día y pagas al recibir.</p>
+    <label class="t-buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+      <input id="t-q" type="search" placeholder="Buscar producto o marca" autocomplete="off"></label>
+  </section>
+  <main id="t-lista" class="t-lista" aria-live="polite"></main>
+  <p id="t-vacio" class="t-vacio" hidden>Muy pronto verás aquí nuestros productos.</p>
+
+  <aside id="t-carrito" class="t-hoja" hidden>
+    <div class="t-hoja-caja">
+      <div class="t-hoja-cab"><h2>Tu pedido</h2><button id="t-cerrar" aria-label="Cerrar">Cerrar</button></div>
+      <ul id="t-items"></ul>
+      <div class="t-total"><span>Total</span><b id="t-total">$0</b></div>
+      <p class="t-nota" id="t-nota-envio"></p>
+      <button id="t-whatsapp" class="t-principal">Pedir por WhatsApp</button>
+    </div>
+  </aside>
+  <footer class="t-pie">Carpe Diem · Ciudad de México</footer>
+  <script type="module" src="/tienda.js"></script>
+</body>
+</html>

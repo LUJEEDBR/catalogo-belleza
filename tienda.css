@@ -1,0 +1,50 @@
+/* Carpe Diem · Tienda — blanco, sobrio, rosa dorado */
+:root{--texto:#1e1a1a;--gris:#8a817f;--sep:rgba(70,45,40,.10);--acento:#a6675e;--suave:#f7f1ef}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#fff;color:var(--texto);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;letter-spacing:-.01em;font-size:16px;line-height:1.35}
+svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+button{font:inherit;color:inherit;cursor:pointer}
+.t-barra{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:calc(.7rem + env(safe-area-inset-top)) 1.2rem .7rem;background:rgba(255,255,255,.86);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep)}
+.t-logo{display:flex;align-items:center;gap:.6rem;text-decoration:none;color:var(--texto)}
+.t-logo img{width:34px;height:34px;border-radius:50%}
+.t-logo span{font-size:.78rem;letter-spacing:.32em;font-weight:500}
+.t-carrito-btn{position:relative;background:none;border:0;padding:.4rem;color:var(--texto)}
+.t-carrito-btn b{position:absolute;top:-2px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:var(--acento);
+  color:#fff;font-size:.7rem;display:grid;place-items:center;padding:0 4px}
+.t-aviso{margin:.8rem 1.2rem 0;padding:.55rem .8rem;border-radius:10px;background:var(--suave);color:var(--acento);font-size:.8rem}
+.t-hero{padding:1.6rem 1.2rem 1rem;max-width:1100px;margin:0 auto}
+.t-hero h1{margin:0 0 .4rem;font-size:1.9rem;font-weight:600;letter-spacing:-.03em}
+.t-hero p{margin:0 0 1.1rem;color:var(--gris);font-size:.92rem;max-width:36rem}
+.t-buscar{display:flex;align-items:center;gap:.5rem;background:var(--suave);border-radius:12px;padding:.65rem .8rem;color:var(--gris)}
+.t-buscar input{flex:1;border:0;background:none;font:inherit;color:var(--texto);outline:none}
+.t-lista{display:grid;grid-template-columns:repeat(2,1fr);gap:1.4rem .9rem;padding:.6rem 1.2rem 2rem;max-width:1100px;margin:0 auto}
+@media (min-width:720px){.t-lista{grid-template-columns:repeat(4,1fr)}}
+.t-foto{aspect-ratio:1;background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--sep)}
+.t-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.t-info{padding:.6rem .1rem 0}
+.t-marca{display:block;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--acento);min-height:1em}
+.t-info h3{margin:.2rem 0 .1rem;font-size:.95rem;font-weight:500;line-height:1.25}
+.t-pres{font-size:.8rem;color:var(--gris);min-height:1em;display:block}
+.t-fila{display:flex;align-items:center;justify-content:space-between;margin-top:.5rem;gap:.4rem}
+.t-fila b{font-weight:600}
+.t-agregar{border:1px solid var(--texto);background:#fff;border-radius:999px;padding:.35rem .8rem;font-size:.8rem;white-space:nowrap}
+.t-agregar.en{background:var(--texto);color:#fff}
+.t-vacio{text-align:center;color:var(--gris);padding:3rem 1rem}
+.t-hoja{position:fixed;inset:0;z-index:20;background:rgba(20,10,8,.32);display:flex;align-items:flex-end;justify-content:center}
+.t-hoja[hidden]{display:none}
+.t-hoja-caja{background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:1.1rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));max-height:85vh;overflow:auto}
+.t-hoja-cab{display:flex;justify-content:space-between;align-items:center}
+.t-hoja-cab h2{margin:0;font-size:1.25rem;font-weight:600}
+.t-hoja-cab button{background:none;border:0;color:var(--acento)}
+#t-items{list-style:none;margin:1rem 0;padding:0}
+#t-items li{display:grid;grid-template-columns:1fr auto auto;gap:.7rem;align-items:center;padding:.65rem 0;border-bottom:1px solid var(--sep);font-size:.9rem}
+.t-cant{display:flex;align-items:center;gap:.5rem}
+.t-cant button{width:28px;height:28px;border-radius:50%;border:1px solid var(--sep);background:#fff}
+.t-total{display:flex;justify-content:space-between;font-size:1.05rem;margin:.4rem 0}
+.t-nota{color:var(--gris);font-size:.8rem}
+.t-principal{width:100%;margin-top:.6rem;border:0;border-radius:14px;padding:.9rem;background:var(--acento);color:#fff;font-weight:600}
+.t-principal:disabled{opacity:.4}
+.t-pie{text-align:center;color:var(--gris);font-size:.75rem;padding:2rem 1rem 3rem;border-top:1px solid var(--sep)}

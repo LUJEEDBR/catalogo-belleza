@@ -1,5 +1,5 @@
 // Service worker: la app abre sin internet; datos de Supabase siempre van a la red.
-const VERSION = 'cb-v12';
+const VERSION = 'cb-v13';
 const APP = ['/', '/index.html', '/app.js', '/config.js', '/db.js', '/sync.js', '/styles.css', '/vendor/supabase.js',
              '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/logo.jpg'];
 

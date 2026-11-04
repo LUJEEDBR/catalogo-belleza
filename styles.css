@@ -217,3 +217,9 @@ input[type=search]::-webkit-search-decoration{-webkit-appearance:none}
 .cam-txt{background:none;color:#fff;font-size:1rem;font-weight:400;width:5.5rem;padding:.5rem 0;text-align:center;cursor:pointer}
 .cam-disparo{width:74px;height:74px;border-radius:50%;padding:0;background:#fff;box-shadow:0 0 0 4px #000,0 0 0 7px #fff;flex:none}
 .cam-disparo:active{transform:scale(.92)}
+
+/* Indicador mientras la IA lee la etiqueta */
+#ficha-origen.leyendo { display:flex; align-items:center; gap:8px; color:#a6675e; }
+#ficha-origen.leyendo::before { content:""; width:14px; height:14px; border-radius:50%;
+  border:2px solid #e8d3cf; border-top-color:#a6675e; animation:cb-giro .8s linear infinite; flex:none; }
+@keyframes cb-giro { to { transform: rotate(360deg); } }

@@ -16,7 +16,7 @@ Devuelve SOLO lo que se lee o se deduce con seguridad; si algo no se ve, déjalo
 - presentacion_unidad: "ml", "g" o "pzas".
 - genero: "mujer", "hombre" o "unisex".
 - categoria: una de cabello, rostro, cuerpo, maquillaje, uñas, perfume, higiene, accesorios, otro.
-- descripcion: una frase corta de para qué sirve.`;
+- descripcion: una frase corta (máx. 20 palabras) de para qué sirve.`;
 
 const schema = {
   type: "OBJECT",
@@ -40,14 +40,14 @@ Deno.serve(async (req) => {
     const armar = (pensar: boolean) => JSON.stringify({
       contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mime || "image/jpeg", data: imagen } }] }],
       generationConfig: {
-        responseMimeType: "application/json", responseSchema: schema, temperature: 0.1,
+        responseMimeType: "application/json", responseSchema: schema, temperature: 0.1, maxOutputTokens: 400,
         // Leer una etiqueta no necesita "pensar": responde en 2-3 s en lugar de 8
-        ...(pensar ? {} : { thinkingConfig: { thinkingLevel: "low" } }),
+        ...(pensar ? {} : { thinkingConfig: { thinkingLevel: "minimal" } }),
       },
     });
     const modelos = [Deno.env.get("GEMINI_MODEL"), "gemini-3.8-flash", "gemini-flash-latest", "gemini-flash-lite-latest"]
       .filter((m, i, a) => m && a.indexOf(m) === i) as string[];
-    const limite = Date.now() + 22000;                  // la app espera máximo 25 s
+    const limite = Date.now() + 17000;                  // la app espera máximo 20 s
     let d: any = null, ultimo = "";
     for (const m of modelos) {
       let sinPensar = true;
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         try {
           r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${key}`,
             { method: "POST", headers: { "Content-Type": "application/json" }, body: armar(!sinPensar),
-              signal: AbortSignal.timeout(Math.min(14000, resta)) });
+              signal: AbortSignal.timeout(Math.min(10000, resta)) });
           j = await r.json();
         } catch (e) { ultimo = `${m}: ${String(e)}`; break; }   // tardó demasiado: siguiente modelo
         if (r.ok) { d = j; break; }

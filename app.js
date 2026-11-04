@@ -353,18 +353,18 @@ $('#cam-tomar').addEventListener('click', async () => {
 $('#cam-galeria').addEventListener('change', e => {
   const f = e.target.files[0]; e.target.value = ''; cerrarCamara(f || null); });
 
-// Imagen completa (sin recorte) a 1280px para que la IA lea bien la etiqueta
+// Imagen completa (sin recorte) reducida a 768px / JPEG 0.7: ~60-90 KB, sube rápido con datos móviles
 async function imagenParaIA(file) {
-  const img = await bitmapReducido(file, 1024);
-  const k = Math.min(1, 1024 / Math.max(img.width, img.height));
+  const img = await bitmapReducido(file, 768);
+  const k = Math.min(1, 768 / Math.max(img.width, img.height));
   const c = document.createElement('canvas');
   c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
   c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); img.close?.();
-  const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
-  c.width = c.height = 0;                          // libera la memoria del canvas (iPhone)
-  const buf = new Uint8Array(await b.arrayBuffer());
-  let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode(...buf.subarray(i, i + 0x8000));
-  return btoa(bin);
+  const b = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.7));
+  c.width = c.height = 0;                          // libera la memoria del canvas
+  const url = await new Promise((ok, mal) => {     // base64 nativo, sin bucles en JS (más rápido en Android)
+    const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = mal; fr.readAsDataURL(b); });
+  return url.slice(url.indexOf(',') + 1);
 }
 
 // Al tomar foto: la IA lee la etiqueta y llena los campos vacíos (nunca pisa lo ya capturado)
@@ -385,9 +385,9 @@ async function leerEtiqueta(file) {
   if (!navigator.onLine) return;
   const mio = ++lecturaId; lecturaCtl?.abort();
   const ctl = lecturaCtl = new AbortController();
-  const reloj = setTimeout(() => ctl.abort(), 25000);   // nunca se queda colgada
+  const reloj = setTimeout(() => ctl.abort(), 20000);   // nunca se queda colgada
   const f = $('#form-producto'), origen = $('#ficha-origen'), antes = origen.textContent;
-  origen.textContent = 'Leyendo la etiqueta… puedes seguir capturando';
+  origen.textContent = 'Leyendo la etiqueta… puedes seguir capturando'; origen.classList.add('leyendo');
   try {
     const data = await llamarIA(file, ctl.signal);
     if (mio !== lecturaId) return;                       // ya pasaste a otro producto
@@ -409,7 +409,7 @@ async function leerEtiqueta(file) {
     origen.textContent = antes;
     toast(err.name === 'AbortError' ? 'La lectura tardó demasiado. Captúralo a mano o toma otra foto.' : 'No se pudo leer la etiqueta. Captúrala a mano.', 3500);
   } finally {
-    clearTimeout(reloj);
+    clearTimeout(reloj); if (mio === lecturaId) origen.classList.remove('leyendo');
     if (lecturaCtl === ctl) lecturaCtl = null;
   }
 }
@@ -712,7 +712,7 @@ $('#btn-foto-buscar').addEventListener('click', async () => {
   $('#buscar-inv').value = ''; porFoto = null;
   $('#buscar-cuenta').textContent = 'Identificando el producto…';
   $('#resultados-inv').innerHTML = ''; $('#buscar-vacio').hidden = true;
-  const ctl = new AbortController(); const reloj = setTimeout(() => ctl.abort(), 25000);
+  const ctl = new AbortController(); const reloj = setTimeout(() => ctl.abort(), 20000);
   try {
     const d = await llamarIA(file, ctl.signal);
     const tNombre = tokens(d.nombre), tMarca = tokens(d.marca);
