@@ -1,16 +1,17 @@
 {
-  "name": "Catálogo Belleza",
-  "short_name": "Catálogo",
-  "description": "Escanea, consulta precios y captura productos de belleza.",
+  "name": "Carpe Diem",
+  "short_name": "Carpe Diem",
+  "description": "Inventario, precios y ventas de Carpe Diem.",
   "lang": "es-MX",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fff7fa",
-  "theme_color": "#c2185b",
+  "background_color": "#f5e1dc",
+  "theme_color": "#f7f3f1",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

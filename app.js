@@ -36,13 +36,13 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 navigator.storage?.persist?.();
 async function pintarRed() {
   const p = $('#estado-red'), n = await db.contarPendientes().catch(() => 0);
-  p.textContent = (navigator.onLine ? 'en línea' : 'sin internet') + (n ? ` · ${n} por subir` : '');
+  p.textContent = (navigator.onLine ? 'En línea' : 'Sin conexión') + (n ? ` · ${n} por subir` : '');
   p.classList.toggle('off', !navigator.onLine);
 }
 async function sync() {
   if (!perfil) return;
   const r = await sincronizar(sb);
-  if (r.subidos) toast(`Subí ${r.subidos} cambio${r.subidos > 1 ? 's' : ''} ✓`);
+  if (r.subidos) toast(`${r.subidos} cambio${r.subidos > 1 ? 's' : ''} sincronizado${r.subidos > 1 ? 's' : ''}`);
   if (r.rechazados.length) toast(r.rechazados.join(' · '), 5000);
   pintarRed(); cargarMarcas(); precargarFotos();
 }
@@ -101,7 +101,7 @@ const ESCANERES = {
 async function iniciar(modo = 'captura') {
   if (corriendo) detener();
   esc_ = ESCANERES[modo]; const video = esc_.video();
-  corriendo = true; esc_.btn().textContent = 'Detener';
+  corriendo = true; { const b = esc_.btn(); b.classList.add('activo'); if (!b.dataset.icono) b.textContent = 'Detener'; }
   if (modo === 'buscar') $('#wrap-video-buscar').hidden = false;
   const nativo = 'BarcodeDetector' in window &&
     (await BarcodeDetector.getSupportedFormats().catch(() => [])).includes('ean_13');
@@ -135,7 +135,7 @@ function leer(codigo) {
 }
 function detener() {
   corriendo = false;
-  if (esc_) esc_.btn().textContent = esc_ === ESCANERES.buscar ? '▦ Escanear' : 'Escanear';
+  if (esc_) { const b = esc_.btn(); b.classList.remove('activo'); if (!b.dataset.icono) b.textContent = 'Escanear'; }
   $('#wrap-video-buscar').hidden = true;
   if (zxing) { zxing.reset(); zxing = null; }
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
@@ -169,8 +169,8 @@ async function alLeer(codigo) {
   const rafaga = $('#chk-rafaga').checked;
   const prod = await buscarPorCodigo(codigo);
   bip(!!prod);
-  if (prod && rafaga) { toast(`⚠️ Ya está en inventario: ${prod.nombre} · ${prod.existencia} pzas`); return; }
-  if (prod) toast(`⚠️ Ya está en inventario: ${prod.nombre}`);
+  if (prod && rafaga) { toast(`Ya está en inventario: ${prod.nombre} · ${prod.existencia} pzas`); return; }
+  if (prod) toast(`Ya está en inventario: ${prod.nombre}`);
   detener();
   abrirFicha(codigo, prod);
 }
@@ -242,7 +242,7 @@ async function avisarDuplicado() {
   const f = $('#form-producto'), msg = $('#ficha-msg');
   const dup = await buscarDuplicado({ codigo: actual ? null : f.codigo_barras.value.trim(), nombre: f.nombre.value,
     marca: f.marca.value, presentacion_cantidad: f.presentacion_cantidad.value, presentacion_unidad: f.presentacion_unidad.value }, actual?.id);
-  msg.textContent = dup ? `⚠️ Ya está en inventario (mismo ${dup.por}): ${describir(dup.p)} · ${dup.p.existencia ?? 0} pzas` : '';
+  msg.textContent = dup ? `Ya está en inventario (mismo ${dup.por}): ${describir(dup.p)} · ${dup.p.existencia ?? 0} pzas` : '';
   return dup;
 }
 for (const campo of ['nombre', 'marca', 'presentacion_cantidad', 'presentacion_unidad', 'codigo_barras'])
@@ -264,7 +264,7 @@ async function abrirFicha(codigo, prod) {
   $('#ficha-msg').textContent = '';
   f.codigo_barras.value = codigo || '';
   if (prod) {
-    $('#ficha-origen').textContent = `⚠️ Ya está en inventario · ${prod.existencia ?? 0} pzas · aquí lo puedes editar`;
+    $('#ficha-origen').textContent = `Ya está en inventario · ${prod.existencia ?? 0} pzas`;
     for (const k of ['nombre', 'presentacion_cantidad', 'presentacion_unidad', 'genero', 'precio_publico',
       'existencia', 'ubicacion', 'ubicacion_detalle']) if (prod[k] != null) f[k].value = prod[k];
     f.marca.value = prod.marcas?.nombre || '';
@@ -369,23 +369,28 @@ async function imagenParaIA(file) {
 
 // Al tomar foto: la IA lee la etiqueta y llena los campos vacíos (nunca pisa lo ya capturado)
 let lecturaId = 0, lecturaCtl = null;
+// Manda la foto a la IA (Edge Function leer-etiqueta) y devuelve nombre, marca, presentación…
+async function llamarIA(file, signal) {
+  const { data: { session } } = await sb.auth.getSession();
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/leer-etiqueta`, {
+    method: 'POST', signal,
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}` },
+    body: JSON.stringify({ imagen: await imagenParaIA(file), mime: 'image/jpeg' }) });
+  const data = await r.json().catch(() => null);
+  if (!r.ok || !data || data.error) throw new Error(data?.error || `HTTP ${r.status}`);
+  return data;
+}
 async function leerEtiqueta(file) {
   if (!navigator.onLine) return;
   const mio = ++lecturaId; lecturaCtl?.abort();
   const ctl = lecturaCtl = new AbortController();
   const reloj = setTimeout(() => ctl.abort(), 25000);   // nunca se queda colgada
   const f = $('#form-producto'), origen = $('#ficha-origen'), antes = origen.textContent;
-  origen.textContent = '✨ Leyendo la etiqueta… (puedes seguir capturando)';
+  origen.textContent = 'Leyendo la etiqueta… puedes seguir capturando';
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    const r = await fetch(`${SUPABASE_URL}/functions/v1/leer-etiqueta`, {
-      method: 'POST', signal: ctl.signal,
-      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}` },
-      body: JSON.stringify({ imagen: await imagenParaIA(file), mime: 'image/jpeg' }) });
-    const data = await r.json().catch(() => null);
+    const data = await llamarIA(file, ctl.signal);
     if (mio !== lecturaId) return;                       // ya pasaste a otro producto
-    if (!r.ok || !data || data.error) throw new Error(data?.error || `HTTP ${r.status}`);
     let n = 0;
     const poner = (campo, valor) => {
       if (valor == null || valor === '' || !f[campo] || f[campo].value) return;
@@ -395,14 +400,14 @@ async function leerEtiqueta(file) {
     poner('presentacion_cantidad', data.presentacion_cantidad);
     poner('presentacion_unidad', data.presentacion_unidad); poner('genero', data.genero);
     if (f.descripcion) poner('descripcion', data.descripcion);
-    origen.textContent = n ? `✨ Llené ${n} campo${n > 1 ? 's' : ''} con la foto · revísalos y pon el precio` : antes;
+    origen.textContent = n ? `Se llenaron ${n} campo${n > 1 ? 's' : ''} con la foto. Revísalos y agrega el precio.` : antes;
     if (n) { bip(true); navigator.vibrate?.(30); f.precio_publico.focus(); }
     if (await avisarDuplicado()) bip(false);
   } catch (err) {
     if (mio !== lecturaId) return;
     console.warn('leer-etiqueta', err);
     origen.textContent = antes;
-    toast(err.name === 'AbortError' ? 'La lectura tardó demasiado; captúralo a mano o toma otra foto.' : 'No pude leer la etiqueta, captúrala a mano.', 3500);
+    toast(err.name === 'AbortError' ? 'La lectura tardó demasiado. Captúralo a mano o toma otra foto.' : 'No se pudo leer la etiqueta. Captúrala a mano.', 3500);
   } finally {
     clearTimeout(reloj);
     if (lecturaCtl === ctl) lecturaCtl = null;
@@ -458,7 +463,7 @@ $('#form-producto').addEventListener('submit', async e => {
     await db.guardarLocales([{ ...(actual || {}), ...local, marcas: { nombre: marca_nombre },
       foto_url: local.foto_url ?? actual?.foto_url ?? null, foto_local: fotoBlob || actual?.foto_local || null }]);
 
-    toast(navigator.onLine ? 'Guardado ✓' : 'Guardado en el teléfono · se sube al volver el internet');
+    toast(navigator.onLine ? 'Guardado' : 'Guardado en el teléfono · se sube al volver el internet');
     mostrar('escaner');
     if ($('#chk-rafaga').checked) iniciar('captura');
     await sync();
@@ -476,8 +481,9 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
   if (b.dataset.tab === 'venta') pintarCarrito();
   if (b.dataset.tab === 'buscar') abrirBuscar(true);
 }));
+const ICONO_SIN_FOTO = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 15.5l-4.8-4.6-8.2 8.1"/></svg>';
 const fotoDe = p => p?.foto_local instanceof Blob ? URL.createObjectURL(p.foto_local) : p?.foto_url || '';
-const miniatura = p => fotoDe(p) ? `<img src="${esc(fotoDe(p))}" alt="" loading="lazy">` : '<span class="sin-foto">💄</span>';
+const miniatura = p => fotoDe(p) ? `<img src="${esc(fotoDe(p))}" alt="" loading="lazy">` : `<span class="sin-foto">${ICONO_SIN_FOTO}</span>`;
 
 // =====================================================================
 // VENDER: carrito
@@ -596,7 +602,7 @@ $('#form-alta-rapida').addEventListener('submit', async e => {
   const prod = { ...fila, foto_local: fotoVenta, marcas: null };
   await db.guardarLocales([prod]);
   agregarAlCarrito(prod, fotoVenta);
-  toast('Producto dado de alta ✓'); mostrar('venta'); pintarRed();
+  toast('Producto dado de alta'); mostrar('venta'); pintarRed();
 });
 
 // Cobrar: se guarda en el teléfono y pasa por la misma cola offline
@@ -615,7 +621,7 @@ $('#btn-cobrar').addEventListener('click', async () => {
   await db.guardarVentas([{ ...venta, pendiente: true, items: venta.items.map(({ foto, ...x }) => x) }]);
   await db.descontarExistencia(venta.items);
   bip(true);
-  toast(`Venta de ${dinero(venta.total)} ✓${navigator.onLine ? '' : ' · se sube al volver el internet'}`, 3000);
+  toast(`Venta registrada · ${dinero(venta.total)}${navigator.onLine ? '' : ' · se sube al volver el internet'}`, 3000);
   carrito = []; pintarCarrito(); pintarRed();
   sync();
 });
@@ -696,7 +702,54 @@ async function abrirBuscar(enfocar = false) {
   if (enfocar) setTimeout(() => $('#buscar-inv').focus({ preventScroll: true }), 50);
 }
 
+// ---------- Buscar por foto ----------
+let porFoto = null;            // { titulo, lista } cuando la última búsqueda fue con foto
+const tokens = t => normal(t).replace(/[^a-z0-9]+/g, ' ').split(' ').filter(w => w.length > 2 || /\d/.test(w));
+$('#btn-foto-buscar').addEventListener('click', async () => {
+  if (!navigator.onLine) return toast('La búsqueda por foto necesita internet. Usa el código o el nombre.');
+  const file = await pedirFoto(); if (!file) { autoCamara('buscar'); return; }
+  detener();
+  $('#buscar-inv').value = ''; porFoto = null;
+  $('#buscar-cuenta').textContent = 'Identificando el producto…';
+  $('#resultados-inv').innerHTML = ''; $('#buscar-vacio').hidden = true;
+  const ctl = new AbortController(); const reloj = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const d = await llamarIA(file, ctl.signal);
+    const tNombre = tokens(d.nombre), tMarca = tokens(d.marca);
+    const cant = Number(d.presentacion_cantidad) || 0;
+    const puntuados = inventario.map(x => {
+      const clave = ' ' + x.clave.replace(/[^a-z0-9]+/g, ' ') + ' ';
+      let s = 0;
+      for (const w of tNombre) if (clave.includes(' ' + w)) s += 1;
+      const marca = normal(x.p.marcas?.nombre || '');
+      if (tMarca.length && tMarca.every(w => marca.includes(w))) s += 2.5;
+      if (cant && Number(x.p.presentacion_cantidad) === cant) s += 1;
+      return { p: x.p, s: s / Math.max(3, tNombre.length) };
+    }).filter(x => x.s >= 0.34).sort((a, b) => b.s - a.s).slice(0, 20).map(x => x.p);
+    porFoto = { titulo: [d.nombre, d.marca].filter(Boolean).join(' · '), lista: puntuados };
+    bip(puntuados.length > 0);
+    if (puntuados.length === 1) return abrirDetalle(puntuados[0]);
+    pintarResultados();
+  } catch (err) {
+    console.warn('buscar-foto', err);
+    $('#buscar-cuenta').textContent = '';
+    toast(err.name === 'AbortError' ? 'La búsqueda tardó demasiado. Intenta otra foto.' : 'No se pudo identificar el producto.', 3500);
+    pintarResultados();
+  } finally { clearTimeout(reloj); }
+});
+
 function pintarResultados() {
+  if (porFoto && !$('#buscar-inv').value.trim()) {
+    const lista = porFoto.lista;
+    $('#buscar-cuenta').textContent = lista.length
+      ? `Por foto: ${porFoto.titulo} · ${lista.length} coincidencia${lista.length === 1 ? '' : 's'}`
+      : `Por foto: ${porFoto.titulo}`;
+    $('#buscar-vacio').textContent = 'Este producto no está en el inventario';
+    $('#buscar-vacio').hidden = lista.length > 0;
+    $('#resultados-inv').innerHTML = lista.map(filaResultado).join('');
+    return;
+  }
+  porFoto = null; $('#buscar-vacio').textContent = 'Sin resultados';
   const q = normal($('#buscar-inv').value.trim());
   const palabras = q.split(/\s+/).filter(Boolean);
   let lista = palabras.length ? inventario.filter(x => palabras.every(w => x.clave.includes(w))) : inventario;
@@ -704,13 +757,14 @@ function pintarResultados() {
   $('#buscar-cuenta').textContent = palabras.length
     ? `${lista.length} resultado${lista.length === 1 ? '' : 's'}` : `${inventario.length} productos en inventario`;
   $('#buscar-vacio').hidden = !(palabras.length && !lista.length);
-  $('#resultados-inv').innerHTML = lista.slice(0, 80).map(p => `
+  $('#resultados-inv').innerHTML = lista.slice(0, 80).map(filaResultado).join('');
+}
+const filaResultado = p => `
     <li data-id="${esc(p.id)}">${miniatura(p)}
       <div class="info"><b>${esc(p.nombre)}</b>
         <small>${esc([p.marcas?.nombre, presentacion(p), `${p.existencia ?? 0} pzas`].filter(Boolean).join(' · '))}</small></div>
       <span class="monto">${p.precio_publico != null ? dinero(p.precio_publico) : '—'}</span>
-    </li>`).join('');
-}
+    </li>`;
 $('#buscar-inv').addEventListener('input', pintarResultados);
 $('#buscar-inv').addEventListener('keydown', async e => {
   if (e.key !== 'Enter') return;
@@ -719,7 +773,8 @@ $('#buscar-inv').addEventListener('keydown', async e => {
 });
 $('#resultados-inv').addEventListener('click', e => {
   const li = e.target.closest('li[data-id]'); if (!li) return;
-  const x = inventario.find(i => i.p.id === li.dataset.id); if (x) abrirDetalle(x.p);
+  const p = inventario.find(i => i.p.id === li.dataset.id)?.p || porFoto?.lista.find(q => q.id === li.dataset.id);
+  if (p) abrirDetalle(p);
 });
 
 async function buscarEscaneado(codigo) {

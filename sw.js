@@ -1,7 +1,7 @@
 // Service worker: la app abre sin internet; datos de Supabase siempre van a la red.
-const VERSION = 'cb-v11';
+const VERSION = 'cb-v12';
 const APP = ['/', '/index.html', '/app.js', '/config.js', '/db.js', '/sync.js', '/styles.css', '/vendor/supabase.js',
-             '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+             '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/logo.jpg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(APP)).then(() => self.skipWaiting()));

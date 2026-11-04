@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Catálogo Belleza</title>
-  <meta name="theme-color" content="#c2185b">
+  <title>Carpe Diem · Inventario</title>
+  <meta name="theme-color" content="#f7f3f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0d0d" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Catálogo">
+  <meta name="apple-mobile-web-app-title" content="Carpe Diem">
   <link rel="preconnect" href="https://epmrlnbojacmmtkekqgh.supabase.co" crossorigin>
   <link rel="modulepreload" href="/vendor/supabase.js">
   <link rel="modulepreload" href="/app.js">
@@ -16,8 +17,8 @@
 </head>
 <body>
   <header>
-    <h1>Catálogo Belleza</h1>
-    <span id="estado-red" class="pill">en línea</span>
+    <div class="titulo"><small class="marca">CARPE DIEM</small><h1>Inventario</h1></div>
+    <span id="estado-red" class="pill">En línea</span>
     <button id="btn-salir" class="link" hidden>Salir</button>
   </header>
 
@@ -40,10 +41,10 @@
     </div>
     <div class="fila">
       <button id="btn-escanear">Escanear</button>
-      <label class="switch"><input type="checkbox" id="chk-rafaga"> Modo ráfaga</label>
+      <label class="switch"><input type="checkbox" id="chk-rafaga"> Ráfaga</label>
     </div>
     <form id="form-manual" class="fila">
-      <input id="codigo-manual" inputmode="numeric" placeholder="o escribe el código">
+      <input id="codigo-manual" inputmode="numeric" placeholder="Código">
       <button type="submit" class="sec">Buscar</button>
       <button type="button" id="btn-sin-codigo" class="sec">Sin código</button>
     </form>
@@ -53,8 +54,9 @@
   <!-- BUSCAR EN INVENTARIO -->
   <section id="vista-buscar" hidden>
     <div class="buscador">
-      <input id="buscar-inv" type="search" placeholder="🔍  Nombre, marca o código" autocomplete="off" enterkeyhint="search">
-      <button id="btn-escanear-buscar" class="sec" type="button" aria-label="Escanear">▦ Escanear</button>
+      <div class="campo-buscar"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5"/></svg><input id="buscar-inv" type="search" placeholder="Nombre, marca o código" autocomplete="off" enterkeyhint="search"></div>
+      <button id="btn-escanear-buscar" class="icono" data-icono="1" type="button" aria-label="Escanear código"><svg viewBox="0 0 24 24"><path d="M3.5 8V6a2.5 2.5 0 0 1 2.5-2.5h2M16 3.5h2A2.5 2.5 0 0 1 20.5 6v2M20.5 16v2a2.5 2.5 0 0 1-2.5 2.5h-2M8 20.5H6A2.5 2.5 0 0 1 3.5 18v-2"/><path d="M7.5 8.5v7M10 8.5v7M12.5 8.5v7M15 8.5v7M16.8 8.5v7"/></svg></button>
+      <button id="btn-foto-buscar" class="icono" type="button" aria-label="Buscar por foto"><svg viewBox="0 0 24 24"><path d="M4.5 8.5A2 2 0 0 1 6.5 6.5h1.8l1.4-2h4.6l1.4 2h1.8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-11a2 2 0 0 1-2-2v-9z"/><circle cx="12" cy="13" r="3.4"/></svg></button>
     </div>
     <div class="video-wrap corto" id="wrap-video-buscar" hidden>
       <video id="video-buscar" playsinline muted></video>
@@ -62,12 +64,12 @@
     </div>
     <p id="buscar-cuenta" class="nota buscar-cuenta"></p>
     <ul id="resultados-inv" class="lista"></ul>
-    <p id="buscar-vacio" class="vacio" hidden>No encontré nada con eso</p>
+    <p id="buscar-vacio" class="vacio" hidden>Sin resultados</p>
   </section>
 
   <!-- DETALLE DE PRODUCTO -->
   <section id="vista-detalle" hidden>
-    <button id="btn-volver-detalle" class="volver" type="button">‹ Buscar</button>
+    <button id="btn-volver-detalle" class="volver" type="button"><svg viewBox="0 0 24 24"><path d="M14.5 5l-7 7 7 7"/></svg>Buscar</button>
     <div class="detalle-hero">
       <img id="det-foto" alt="">
       <div>
@@ -83,7 +85,7 @@
     </div>
     <ul id="det-specs" class="lista specs"></ul>
     <div class="fila">
-      <button id="btn-det-vender" type="button">🛍 Vender</button>
+      <button id="btn-det-vender" type="button">Vender</button>
       <button id="btn-det-editar" class="sec" type="button">Editar</button>
     </div>
   </section>
@@ -94,7 +96,7 @@
       <p id="ficha-origen" class="nota"></p>
       <div class="foto-wrap">
         <img id="foto-preview" alt="">
-        <button type="button" id="btn-foto" class="sec boton">📷 Foto</button>
+        <button type="button" id="btn-foto" class="sec boton">Tomar foto</button>
       </div>
       <label>Código de barras <input name="codigo_barras" readonly></label>
       <label>Nombre <input name="nombre" required></label>
@@ -134,7 +136,7 @@
     </div>
     <div class="fila">
       <button id="btn-escanear-venta">Escanear</button>
-      <button type="button" id="btn-foto-venta" class="sec">📷 Sin código</button>
+      <button type="button" id="btn-foto-venta" class="sec">Sin código</button>
     </div>
     <form id="form-buscar-venta" class="fila">
       <input id="buscar-venta" placeholder="Nombre o código" autocomplete="off">
@@ -143,7 +145,7 @@
 
     <h3 class="encabezado">Carrito <span id="carrito-cuenta"></span></h3>
     <ul id="carrito" class="lista"></ul>
-    <p id="carrito-vacio" class="vacio">Escanea un producto para empezar</p>
+    <p id="carrito-vacio" class="vacio">Escanea un producto para comenzar</p>
 
     <div class="cobro">
       <div class="segmentado" id="metodo-pago">
@@ -198,10 +200,10 @@
   </section>
 
   <nav id="tabs" hidden>
-    <button data-tab="buscar"><span>🔍</span>Buscar</button>
-    <button data-tab="escaner" class="activo"><span>📷</span>Capturar</button>
-    <button data-tab="venta"><span>🛍</span>Vender</button>
-    <button data-tab="reporte"><span>📊</span>Ventas</button>
+    <button data-tab="buscar"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5"/></svg><span>Buscar</span></button>
+    <button data-tab="escaner" class="activo"><svg viewBox="0 0 24 24"><path d="M3.5 8V6a2.5 2.5 0 0 1 2.5-2.5h2M16 3.5h2A2.5 2.5 0 0 1 20.5 6v2M20.5 16v2a2.5 2.5 0 0 1-2.5 2.5h-2M8 20.5H6A2.5 2.5 0 0 1 3.5 18v-2"/><path d="M7.5 8.5v7M10 8.5v7M12.5 8.5v7M15 8.5v7M16.8 8.5v7"/></svg><span>Capturar</span></button>
+    <button data-tab="venta"><svg viewBox="0 0 24 24"><path d="M5.5 8h13l-1 11.2a1.5 1.5 0 0 1-1.5 1.3H8a1.5 1.5 0 0 1-1.5-1.3L5.5 8z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg><span>Vender</span></button>
+    <button data-tab="reporte"><svg viewBox="0 0 24 24"><path d="M4 20.5h16"/><path d="M7 17V12M12 17V7M17 17v-7"/></svg><span>Ventas</span></button>
   </nav>
 
   <!-- CÁMARA DENTRO DE LA APP (evita que Android cierre la app por memoria al abrir la cámara externa) -->
