@@ -1,5 +1,5 @@
 // Service worker: la app abre sin internet; datos de Supabase siempre van a la red.
-const VERSION = 'cb-v13';
+const VERSION = 'cb-v14';
 const APP = ['/', '/index.html', '/app.js', '/config.js', '/db.js', '/sync.js', '/styles.css', '/vendor/supabase.js',
              '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/logo.jpg'];
 
@@ -15,6 +15,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // La tienda pública siempre va a la red (precios y fichas al día)
+  if (/^\/(tienda|fichas)/.test(url.pathname)) return;
   if (e.request.method !== 'GET') return;
   // Fotos de productos (Storage público): cache primero para que se vean sin internet
   if (url.hostname.endsWith('supabase.co') && url.pathname.startsWith('/storage/v1/object/public/')) {

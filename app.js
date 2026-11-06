@@ -417,7 +417,7 @@ async function leerEtiqueta(file) {
 async function cargarMarcas() {
   if (!navigator.onLine) return;
   const { data } = await sb.from('marcas').select('nombre').order('nombre');
-  $('#lista-marcas').innerHTML = (data || []).map(m => `<option value="${m.nombre}">`).join('');
+  $('#lista-marcas').innerHTML = (data || []).map(m => `<option value="${esc(m.nombre)}">`).join('');
 }
 
 $('#form-producto').addEventListener('submit', async e => {

@@ -34,9 +34,10 @@ const categoria = p => { const t = norm(p.nombre); return (CATEGORIAS.find(([, r
 
 let productos = [], fichas = {}, cat = 'Todo';
 let carrito = JSON.parse(localStorage.getItem('cd-carrito') || '{}');
+let esDemo = false;
 
 async function cargar() {
-  const demo = new URLSearchParams(location.search).has('demo');
+  const demo = esDemo = new URLSearchParams(location.search).has('demo');
   const pf = fetch('/fichas.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : {}).catch(() => ({}));
   if (demo) {
     productos = await (await fetch('/tienda-demo.json', { cache: 'no-cache' })).json();
@@ -50,6 +51,12 @@ async function cargar() {
   }
   fichas = await pf;
   productos.forEach(p => (p._cat = categoria(p)));
+  // El pedido guardado se ajusta a los precios y productos de hoy
+  for (const id of Object.keys(carrito)) {
+    const p = productos.find(x => String(x.id) === String(id));
+    if (!p || !Number(p.precio_publico)) delete carrito[id];
+    else Object.assign(carrito[id], { nombre: p.nombre, precio: Number(p.precio_publico) });
+  }
   pintarChips(); pintar();
   const id = new URLSearchParams(location.hash.slice(1)).get('p'); if (id) abrirFicha(id);
 }
@@ -153,7 +160,9 @@ function pintarCarrito() {
   $('#nota-envio').textContent = !n ? '' : total >= META
     ? 'Listo: en CDMX cerca del Metro te lo entregamos el mismo día y pagas al recibir.'
     : `Te faltan ${pesos(META - total)} para la entrega el mismo día en CDMX. Fuera de CDMX te mandamos el costo de envío por WhatsApp.`;
-  $('#whatsapp').disabled = !n;
+  const listo = WHATSAPP && !esDemo;
+  $('#whatsapp').disabled = !n || !listo;
+  if (n && !listo) $('#nota-envio').textContent = 'Vista previa: los pedidos por WhatsApp se activan al publicar la tienda.';
   localStorage.setItem('cd-carrito', JSON.stringify(carrito));
 }
 
@@ -200,6 +209,7 @@ $('#abrir-carrito').onclick = () => abrir('#carrito');
 $('#q').oninput = pintar;
 addEventListener('scroll', () => $('#barra').classList.toggle('vid', scrollY > 8), { passive: true });
 $('#whatsapp').onclick = () => {
+  if (!WHATSAPP || esDemo) return;
   const items = Object.values(carrito); const total = items.reduce((a, i) => a + i.n * i.precio, 0);
   const txt = ['Hola, quiero hacer este pedido en Carpe Diem:', ...items.map(i => `• ${i.n} × ${i.nombre} — ${pesos(i.n * i.precio)}`),
     `Total: ${pesos(total)}`, 'Entrega en: '].join('\n');

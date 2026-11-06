@@ -1,8 +1,8 @@
--- Ejecutado 2026-11-03 vía API: la cuenta eg430127@gmail.com queda como dueña al crearse.
+-- Ejecutado 2026-11-03 vía API: la cuenta CORREO_DE_LA_DUENA@ejemplo.com queda como dueña al crearse.
 create or replace function public.dueno_por_correo() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if lower(new.email) = 'eg430127@gmail.com' then
+  if lower(new.email) = 'CORREO_DE_LA_DUENA@ejemplo.com' then
     update public.usuarios set rol = 'dueno' where id = new.id;
   end if;
   return new;

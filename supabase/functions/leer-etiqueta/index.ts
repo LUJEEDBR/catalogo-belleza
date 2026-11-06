@@ -1,7 +1,7 @@
 // Lee la etiqueta de un producto de belleza desde una foto con Gemini.
 // Requiere el secreto GEMINI_API_KEY en Supabase (Edge Functions > Secrets).
 const cors = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://catalogo-belleza-teal.vercel.app",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -34,9 +34,20 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) return json({ error: "falta_llave" }, 503);
+  // Solo personal activo de la tienda puede usar la IA (protege la cuota de Gemini)
+  const auth = req.headers.get("Authorization") || "";
+  const url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!auth.startsWith("Bearer ") || !url || !anon) return json({ error: "sin_sesion" }, 401);
+  try {
+    const ok = await fetch(`${url}/rest/v1/rpc/es_staff`, {
+      method: "POST", headers: { apikey: anon, Authorization: auth, "Content-Type": "application/json" }, body: "{}",
+      signal: AbortSignal.timeout(4000) }).then(r => r.ok ? r.json() : false).catch(() => false);
+    if (ok !== true) return json({ error: "sin_permiso" }, 403);
+  } catch { return json({ error: "sin_permiso" }, 403); }
   try {
     const { imagen, mime } = await req.json();
     if (!imagen) return json({ error: "sin_imagen" }, 400);
+    if (typeof imagen !== "string" || imagen.length > 1_500_000) return json({ error: "imagen_grande" }, 413);
     const armar = (pensar: boolean) => JSON.stringify({
       contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mime || "image/jpeg", data: imagen } }] }],
       generationConfig: {
