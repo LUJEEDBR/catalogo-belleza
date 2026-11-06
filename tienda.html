@@ -4,40 +4,98 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Carpe Diem · Tienda</title>
-  <meta name="description" content="Productos para el cabello. Pide por WhatsApp; entrega el mismo día en CDMX.">
-  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Cuidado profesional para tu cabello. Pide por WhatsApp; entrega el mismo día en CDMX.">
+  <meta name="theme-color" content="#fbf7f5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#141011" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://epmrlnbojacmmtkekqgh.supabase.co" crossorigin>
-  <link rel="stylesheet" href="/tienda.css">
+  <link rel="stylesheet" href="/tienda.css?v=2">
 </head>
 <body>
-  <header class="t-barra">
-    <a class="t-logo" href="/tienda.html"><img src="/icons/icon-192.png" alt=""><span>CARPE DIEM</span></a>
-    <button id="t-abrir-carrito" class="t-carrito-btn" aria-label="Carrito">
-      <svg viewBox="0 0 24 24"><path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
-      <b id="t-cuenta" hidden>0</b>
+  <header class="barra" id="barra">
+    <a class="logo" href="/tienda.html" aria-label="Carpe Diem"><img src="/icons/icon-192.png" alt=""><span>CARPE DIEM</span></a>
+    <button id="abrir-carrito" class="vidrio-btn" aria-label="Tu pedido">
+      <svg viewBox="0 0 24 24"><path d="M5.5 8h13l-1.1 10.6a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8L5.5 8Z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg>
+      <b id="cuenta" hidden>0</b>
     </button>
   </header>
-  <div id="t-aviso" class="t-aviso" hidden></div>
-  <section class="t-hero">
-    <h1>Cuidado para tu cabello</h1>
-    <p>Pide por WhatsApp. En CDMX, pedidos mayores a $500 cerca del Metro se entregan el mismo día y pagas al recibir.</p>
-    <label class="t-buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
-      <input id="t-q" type="search" placeholder="Buscar producto o marca" autocomplete="off"></label>
-  </section>
-  <main id="t-lista" class="t-lista" aria-live="polite"></main>
-  <p id="t-vacio" class="t-vacio" hidden>Muy pronto verás aquí nuestros productos.</p>
 
-  <aside id="t-carrito" class="t-hoja" hidden>
-    <div class="t-hoja-caja">
-      <div class="t-hoja-cab"><h2>Tu pedido</h2><button id="t-cerrar" aria-label="Cerrar">Cerrar</button></div>
-      <ul id="t-items"></ul>
-      <div class="t-total"><span>Total</span><b id="t-total">$0</b></div>
-      <p class="t-nota" id="t-nota-envio"></p>
-      <button id="t-whatsapp" class="t-principal">Pedir por WhatsApp</button>
+  <div id="aviso" class="aviso" hidden></div>
+
+  <section class="hero">
+    <p class="sobre">Ciudad de México</p>
+    <h1>Tu cabello,<br><em>en su mejor día.</em></h1>
+    <p class="bajada">Productos profesionales con información del fabricante. Pide por WhatsApp; en CDMX, pedidos de $500 o más se entregan el mismo día en el Metro y pagas al recibir.</p>
+    <label class="buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+      <input id="q" type="search" placeholder="Buscar producto o marca" autocomplete="off" enterkeyhint="search"></label>
+  </section>
+
+  <nav class="chips" id="chips" aria-label="Categorías"></nav>
+
+  <section class="seccion" id="sec-dest" hidden>
+    <div class="titulo-sec"><h2>Favoritos de la casa</h2></div>
+    <div class="carrusel" id="destacados"></div>
+  </section>
+
+  <section class="seccion">
+    <div class="titulo-sec"><h2 id="titulo-lista">Todo</h2><span id="conteo"></span></div>
+    <main id="lista" class="rejilla" aria-live="polite"></main>
+    <p id="vacio" class="vacio" hidden>Muy pronto verás aquí nuestros productos.</p>
+  </section>
+
+  <section class="beneficios-tienda">
+    <div><svg viewBox="0 0 24 24"><path d="M3 12h11M10 6l6 6-6 6"/><circle cx="19" cy="12" r="2"/></svg><b>Mismo día en CDMX</b><span>Pedidos de $500 o más, en estaciones del Metro.</span></div>
+    <div><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M3 10h18"/></svg><b>Pagas al recibir</b><span>Efectivo en la entrega dentro de CDMX.</span></div>
+    <div><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg><b>Información oficial</b><span>Beneficios y uso tomados del fabricante.</span></div>
+  </section>
+
+  <footer class="pie">Carpe Diem · Ciudad de México<br><small>La información de cada producto proviene del fabricante o de su etiqueta. No sustituye la consulta con un profesional.</small></footer>
+
+  <!-- Ficha de producto -->
+  <div id="ficha" class="hoja ficha" hidden role="dialog" aria-modal="true" aria-labelledby="f-nombre">
+    <div class="hoja-caja">
+      <div class="asa"></div>
+      <button class="cerrar vidrio-btn" data-cerrar aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="f-media">
+        <div class="f-foto" id="f-foto"></div>
+        <div class="seg" id="f-vistas" hidden>
+          <button class="on" data-vista="foto">Foto</button><button data-vista="giro">360°</button>
+        </div>
+        <p class="pista" id="f-pista" hidden>Desliza para girar</p>
+      </div>
+      <div class="f-cuerpo">
+        <span class="marca" id="f-marca"></span>
+        <h2 id="f-nombre"></h2>
+        <span class="pres" id="f-pres"></span>
+        <div class="f-precio"><b id="f-precio"></b></div>
+        <div class="seg seg-ancho" id="f-tabs" role="tablist"></div>
+        <div id="f-contenido" class="f-contenido"></div>
+        <p class="fuente" id="f-fuente"></p>
+      </div>
+      <div class="f-accion">
+        <div class="cant"><button id="f-menos" aria-label="Menos">−</button><span id="f-n">1</span><button id="f-mas" aria-label="Más">+</button></div>
+        <button id="f-agregar" class="principal">Agregar al pedido</button>
+      </div>
     </div>
-  </aside>
-  <footer class="t-pie">Carpe Diem · Ciudad de México</footer>
-  <script type="module" src="/tienda.js"></script>
+  </div>
+
+  <!-- Carrito -->
+  <div id="carrito" class="hoja" hidden role="dialog" aria-modal="true" aria-labelledby="c-titulo">
+    <div class="hoja-caja">
+      <div class="asa"></div>
+      <div class="hoja-cab"><h2 id="c-titulo">Tu pedido</h2><button data-cerrar class="texto-btn">Listo</button></div>
+      <ul id="items"></ul>
+      <div class="total"><span>Total</span><b id="total">$0</b></div>
+      <div class="barra-meta"><i id="meta-barra"></i></div>
+      <p class="nota" id="nota-envio"></p>
+      <button id="whatsapp" class="principal">Pedir por WhatsApp</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/tienda.js?v=2"></script>
 </body>
 </html>
