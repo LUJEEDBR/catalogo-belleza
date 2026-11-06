@@ -12,9 +12,10 @@
   <link rel="icon" href="/icons/icon-192.png">
   <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <link rel="preconnect" href="https://epmrlnbojacmmtkekqgh.supabase.co" crossorigin>
-  <link rel="stylesheet" href="/tienda.css?v=3">
+  <link rel="stylesheet" href="/tienda.css?v=4">
 </head>
 <body>
+  <div class="ambiente" aria-hidden="true"><i></i><i></i><i></i></div>
   <header class="barra" id="barra">
     <a class="logo" href="/tienda.html" aria-label="Carpe Diem"><img src="/icons/icon-192.png" alt=""><span>CARPE DIEM</span></a>
     <button id="abrir-carrito" class="vidrio-btn" aria-label="Tu pedido">
@@ -33,7 +34,7 @@
       <input id="q" type="search" placeholder="Buscar producto o marca" autocomplete="off" enterkeyhint="search"></label>
   </section>
 
-  <nav class="chips" id="chips" aria-label="Categorías"></nav>
+  <div class="chips-caja"><nav class="chips" id="chips" aria-label="Categorías"><span class="pildora" id="pildora"></span></nav></div>
 
   <section class="seccion" id="sec-dest" hidden>
     <div class="titulo-sec"><h2>Favoritos de la casa</h2></div>
@@ -95,7 +96,13 @@
     </div>
   </div>
 
+  <nav class="dock" id="dock" aria-label="Navegación">
+    <button class="on" data-dock="inicio" aria-label="Inicio"><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-6H9v6H5.5A1.5 1.5 0 0 1 4 19v-8.5Z"/></svg><span>Inicio</span></button>
+    <button data-dock="buscar" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><span>Buscar</span></button>
+    <button data-dock="pedido" aria-label="Tu pedido"><svg viewBox="0 0 24 24"><path d="M5.5 8h13l-1.1 10.6a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8L5.5 8Z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/></svg><span>Pedido</span><b id="cuenta2" hidden>0</b></button>
+    <i class="dock-luz" id="dock-luz"></i>
+  </nav>
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/tienda.js?v=2"></script>
+  <script type="module" src="/tienda.js?v=4"></script>
 </body>
 </html>

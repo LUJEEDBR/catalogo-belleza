@@ -56,7 +56,8 @@ async function cargar() {
 
 function pintarChips() {
   const usadas = ['Todo', ...CATEGORIAS.map(c => c[0]), 'Otros'].filter(c => c === 'Todo' || productos.some(p => p._cat === c));
-  $('#chips').innerHTML = usadas.map(c => `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+  $('#chips').innerHTML = '<span class="pildora" id="pildora"></span>' + usadas.map(c => `<button class="${c === cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+  requestAnimationFrame(moverPildora);
 }
 
 function tarjeta(p, i = 0) {
@@ -139,6 +140,7 @@ function pintarCarrito() {
   const items = Object.values(carrito);
   const n = items.reduce((a, i) => a + i.n, 0), total = items.reduce((a, i) => a + i.n * i.precio, 0);
   $('#cuenta').hidden = !n; $('#cuenta').textContent = n;
+  $('#cuenta2').hidden = !n; $('#cuenta2').textContent = n;
   $('#items').innerHTML = items.map(i => {
     const p = productos.find(x => String(x.id) === String(i.id));
     return `<li>${p ? imgTag(p) : '<span class="ph"></span>'}
@@ -169,12 +171,14 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = fals
 function abrir(sel) { const h = $(sel); h.hidden = false; document.body.classList.add('bloqueo'); requestAnimationFrame(() => requestAnimationFrame(() => h.classList.add('abierta'))); }
 function cerrar(h) {
   h.classList.remove('abierta'); setTimeout(() => { h.hidden = true; if (!document.querySelector('.hoja.abierta')) document.body.classList.remove('bloqueo'); }, 380);
+  if (h.id === 'carrito') luzDock('inicio');
   if (h.id === 'ficha') history.replaceState(null, '', location.pathname + location.search);
 }
 
 document.addEventListener('click', e => {
   const b = e.target.closest('button');
-  if (b?.dataset.id) { e.stopPropagation(); cambiar(b.dataset.id, 1); toast('Agregado a tu pedido'); return; }
+  if (b?.dataset.id) { volar(b.closest('.tarjeta')?.querySelector('img')); cambiar(b.dataset.id, 1); toast('Agregado a tu pedido'); return; }
+  if (b?.dataset.dock) return dock(b.dataset.dock);
   if (b?.dataset.mas) return cambiar(b.dataset.mas, 1);
   if (b?.dataset.menos) return cambiar(b.dataset.menos, -1);
   if (b?.dataset.cat) { cat = b.dataset.cat; pintarChips(); pintar(); return; }
@@ -191,7 +195,7 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.hoja.abierta').forEach(cerrar); });
 $('#f-mas').onclick = () => ($('#f-n').textContent = ++nFicha);
 $('#f-menos').onclick = () => ($('#f-n').textContent = nFicha = Math.max(1, nFicha - 1));
-$('#f-agregar').onclick = () => { cambiar(actual.id, nFicha); cerrar($('#ficha')); toast(nFicha > 1 ? `${nFicha} agregados a tu pedido` : 'Agregado a tu pedido'); };
+$('#f-agregar').onclick = () => { volar($('#f-foto img')); cambiar(actual.id, nFicha); cerrar($('#ficha')); toast(nFicha > 1 ? `${nFicha} agregados a tu pedido` : 'Agregado a tu pedido'); };
 $('#abrir-carrito').onclick = () => abrir('#carrito');
 $('#q').oninput = pintar;
 addEventListener('scroll', () => $('#barra').classList.toggle('vid', scrollY > 8), { passive: true });
@@ -201,4 +205,79 @@ $('#whatsapp').onclick = () => {
     `Total: ${pesos(total)}`, 'Entrega en: '].join('\n');
   window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(txt)}`, '_blank');
 };
+
+/* ---------- Liquid glass: interacciones ---------- */
+function moverPildora() {
+  const on = $('#chips button.on'), p = $('#pildora'); if (!on || !p) return;
+  p.style.width = on.offsetWidth + 'px'; p.style.transform = `translateX(${on.offsetLeft}px)`;
+  on.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+}
+addEventListener('resize', moverPildora);
+
+// Inclinación 3D con reflejo que sigue el dedo o el cursor
+const MOV = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+document.addEventListener('pointermove', e => {
+  if (!MOV) return; const t = e.target.closest?.('.tarjeta');
+  document.querySelectorAll('.tarjeta.inclina').forEach(x => { if (x !== t) soltar(x); });
+  if (!t) return; const r = t.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  t.classList.add('inclina'); t.style.setProperty('--ry', ((x - .5) * 10).toFixed(2) + 'deg'); t.style.setProperty('--rx', ((.5 - y) * 10).toFixed(2) + 'deg');
+  t.style.setProperty('--mx', x * 100 + '%'); t.style.setProperty('--my', y * 100 + '%');
+}, { passive: true });
+const soltar = t => { t.classList.remove('inclina'); t.style.setProperty('--rx', '0deg'); t.style.setProperty('--ry', '0deg'); };
+document.addEventListener('pointerup', e => e.pointerType !== 'mouse' && document.querySelectorAll('.tarjeta.inclina').forEach(soltar));
+document.addEventListener('pointercancel', () => document.querySelectorAll('.tarjeta.inclina').forEach(soltar));
+document.addEventListener('pointerleave', () => document.querySelectorAll('.tarjeta.inclina').forEach(soltar));
+
+// La foto vuela hasta el pedido
+function volar(img) {
+  if (!img || !MOV || !img.complete) return; const a = img.getBoundingClientRect(); const dest = $('[data-dock="pedido"]').getBoundingClientRect();
+  const c = img.cloneNode(); c.removeAttribute('onerror'); c.className = 'vuela';
+  Object.assign(c.style, { left: a.left + 'px', top: a.top + 'px', width: a.width + 'px', height: a.height + 'px' }); document.body.appendChild(c);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const dx = dest.left + dest.width / 2 - (a.left + a.width / 2), dy = dest.top + dest.height / 2 - (a.top + a.height / 2);
+    c.style.transform = `translate(${dx}px,${dy}px) scale(${24 / a.width})`; c.style.opacity = '.3'; c.style.borderRadius = '50%';
+  }));
+  setTimeout(() => c.remove(), 800);
+}
+
+// Dock flotante
+function luzDock(nombre) {
+  const b = $(`[data-dock="${nombre}"]`), l = $('#dock-luz');
+  $('#dock').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  l.style.width = b.offsetWidth + 'px'; l.style.transform = `translateX(${b.offsetLeft}px)`;
+}
+function dock(n) {
+  luzDock(n);
+  if (n === 'inicio') scrollTo({ top: 0, behavior: 'smooth' });
+  if (n === 'buscar') { scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => $('#q').focus(), 350); }
+  if (n === 'pedido') abrir('#carrito');
+}
+requestAnimationFrame(() => luzDock('inicio'));
+let yPrev = 0;
+addEventListener('scroll', () => {
+  const y = scrollY; $('#dock').classList.toggle('mini', y > 240 && y > yPrev); yPrev = y;
+  requestAnimationFrame(() => luzDock($('#dock button.on')?.dataset.dock || 'inicio'));
+}, { passive: true });
+
+// Hojas: arrastra hacia abajo para cerrar
+document.querySelectorAll('.hoja-caja').forEach(caja => {
+  let y0 = null, dy = 0;
+  caja.addEventListener('touchstart', e => { if (caja.scrollTop > 0 || e.target.closest('.f-foto.giro')) return; y0 = e.touches[0].clientY; dy = 0; }, { passive: true });
+  caja.addEventListener('touchmove', e => {
+    if (y0 === null) return; dy = Math.max(0, e.touches[0].clientY - y0);
+    if (dy > 0) { caja.classList.add('arrastra'); caja.style.transform = `translateY(${dy}px)`; }
+  }, { passive: true });
+  caja.addEventListener('touchend', () => {
+    if (y0 === null) return; caja.classList.remove('arrastra'); caja.style.transform = '';
+    if (dy > 110) cerrar(caja.closest('.hoja')); y0 = null; dy = 0;
+  });
+});
+
+// Foto de la ficha: leve paralaje al mover el dedo
+$('#f-foto').addEventListener('pointermove', e => {
+  if (!MOV || $('#f-foto').classList.contains('giro')) return; const r = e.currentTarget.getBoundingClientRect();
+  const img = e.currentTarget.querySelector('img'); if (img) img.style.transform = `scale(1.08) translate(${((e.clientX - r.left) / r.width - .5) * -10}px,${((e.clientY - r.top) / r.height - .5) * -10}px)`;
+});
+$('#f-foto').addEventListener('pointerleave', e => { const img = e.currentTarget.querySelector('img'); if (img) img.style.transform = ''; });
+
 cargar();
