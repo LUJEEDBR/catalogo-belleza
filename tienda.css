@@ -242,3 +242,4 @@ body{padding-bottom:5.5rem}
 .asa{cursor:grab}
 .f-media{border-radius:28px 28px 0 0;overflow:hidden}
 .f-foto img{transition:transform .2s ease-out}
+.pie a{color:var(--acento);text-decoration:none;font-weight:500}
